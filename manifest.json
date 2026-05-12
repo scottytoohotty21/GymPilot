@@ -1,1 +1,11 @@
-
+{
+  "name": "GymPilot",
+  "short_name": "GymPilot",
+  "description": "Workout planner, gym tracker, and personal best logger.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#111827",
+  "orientation": "portrait-primary",
+  "icons": []
+}
