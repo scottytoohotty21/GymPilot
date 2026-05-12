@@ -69,11 +69,83 @@
       </section>
 
       <section class="screen" id="library">
-        <div class="card">
-          <h2>Exercise Library</h2>
-          <p>This is where we’ll store weights, resistance machines, bodyweight exercises, and cardio machines.</p>
-        </div>
-      </section>
+  <div class="card">
+    <div class="section-heading">
+      <div>
+        <h2>Exercise Library</h2>
+        <p>Add weights, resistance machines, cable exercises, bodyweight moves, and cardio machines.</p>
+      </div>
+    </div>
+
+    <form id="exerciseForm" class="form-grid">
+      <input type="hidden" id="exerciseId" />
+
+      <label>
+        Exercise name
+        <input id="exerciseName" type="text" placeholder="e.g. Bench Press" required />
+      </label>
+
+      <label>
+        Type
+        <select id="exerciseType" required>
+          <option value="">Choose type</option>
+          <option value="Weights">Weights</option>
+          <option value="Resistance Machine">Resistance Machine</option>
+          <option value="Cable">Cable</option>
+          <option value="Bodyweight">Bodyweight</option>
+          <option value="Cardio">Cardio</option>
+          <option value="Other">Other</option>
+        </select>
+      </label>
+
+      <label>
+        Muscle group
+        <input id="exerciseMuscleGroup" type="text" placeholder="e.g. Chest, Back, Legs" />
+      </label>
+
+      <label>
+        Default sets
+        <input id="exerciseSets" type="number" min="0" step="1" placeholder="e.g. 3" />
+      </label>
+
+      <label>
+        Default reps
+        <input id="exerciseReps" type="number" min="0" step="1" placeholder="e.g. 10" />
+      </label>
+
+      <label>
+        Default weight / resistance
+        <input id="exerciseWeight" type="text" placeholder="e.g. 40kg, Level 8, Bodyweight" />
+      </label>
+
+      <label class="full-width">
+        Notes
+        <textarea id="exerciseNotes" rows="3" placeholder="Seat position, form cues, grip, machine number, etc."></textarea>
+      </label>
+
+      <div class="form-actions full-width">
+        <button type="submit" class="primary-button" id="saveExerciseButton">
+          Save exercise
+        </button>
+
+        <button type="button" class="secondary-button" id="cancelEditExerciseButton">
+          Cancel edit
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="section-heading">
+      <div>
+        <h3>Saved exercises</h3>
+        <p id="librarySummary">No exercises saved yet.</p>
+      </div>
+    </div>
+
+    <div id="exerciseList" class="item-list"></div>
+  </div>
+</section>
 
       <section class="screen" id="workout">
         <div class="card">
