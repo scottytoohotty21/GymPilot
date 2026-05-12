@@ -172,3 +172,178 @@ button {
     border-radius: 18px;
   }
 }
+.section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.section-heading h2,
+.section-heading h3 {
+  margin-bottom: 4px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: var(--text);
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: rgba(15, 23, 42, 0.9);
+  color: var(--text);
+  border-radius: 14px;
+  padding: 12px 13px;
+  outline: none;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: rgba(56, 189, 248, 0.75);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.16);
+}
+
+textarea {
+  resize: vertical;
+}
+
+.full-width {
+  grid-column: 1 / -1;
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.secondary-button,
+.danger-button,
+.small-button {
+  border: 0;
+  padding: 11px 14px;
+  border-radius: 14px;
+  font-weight: 800;
+}
+
+.secondary-button {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.danger-button {
+  background: rgba(239, 68, 68, 0.16);
+  color: #fecaca;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+.small-button {
+  background: rgba(56, 189, 248, 0.14);
+  color: #bae6fd;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  padding: 8px 10px;
+  font-size: 0.85rem;
+}
+
+.item-list {
+  display: grid;
+  gap: 12px;
+}
+
+.exercise-item {
+  border: 1px solid var(--border);
+  background: rgba(15, 23, 42, 0.72);
+  border-radius: 18px;
+  padding: 14px;
+}
+
+.exercise-item-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.exercise-item h4 {
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+}
+
+.exercise-meta {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.exercise-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.stat-chip {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text);
+  padding: 6px 9px;
+  font-size: 0.82rem;
+}
+
+.exercise-notes {
+  color: var(--muted);
+  font-size: 0.92rem;
+  margin-top: 10px;
+  line-height: 1.45;
+}
+
+.exercise-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.empty-state {
+  border: 1px dashed var(--border);
+  border-radius: 18px;
+  padding: 18px;
+  color: var(--muted);
+  text-align: center;
+}
+
+#cancelEditExerciseButton {
+  display: none;
+}
+
+#cancelEditExerciseButton.visible {
+  display: inline-flex;
+}
+
+@media (max-width: 700px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .exercise-item-header {
+    flex-direction: column;
+  }
+}
