@@ -1,1 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
 
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>GymPilot</title>
+
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="styles.css" />
+
+  <meta name="theme-color" content="#111827" />
+</head>
+
+<body>
+  <div class="app-shell">
+
+    <header class="app-header">
+      <div>
+        <h1>GymPilot</h1>
+        <p>Plan it. Lift it. Log it.</p>
+      </div>
+
+      <div class="status-pill" id="saveStatus">
+        Ready
+      </div>
+    </header>
+
+    <nav class="tab-bar" aria-label="Main navigation">
+      <button class="tab-button active" data-screen="dashboard">Dashboard</button>
+      <button class="tab-button" data-screen="routines">Routines</button>
+      <button class="tab-button" data-screen="library">Library</button>
+      <button class="tab-button" data-screen="workout">Workout</button>
+      <button class="tab-button" data-screen="history">History</button>
+      <button class="tab-button" data-screen="pbs">PBs</button>
+    </nav>
+
+    <main>
+
+      <section class="screen active" id="dashboard">
+        <div class="card hero-card">
+          <h2>Today’s training</h2>
+          <p>No workout selected yet.</p>
+
+          <button class="primary-button" id="quickSaveTestButton">
+            Test save system
+          </button>
+        </div>
+
+        <div class="grid-two">
+          <div class="card">
+            <h3>Routines</h3>
+            <p id="routineCount">0 saved routines</p>
+          </div>
+
+          <div class="card">
+            <h3>Exercise library</h3>
+            <p id="exerciseCount">0 saved exercises</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" id="routines">
+        <div class="card">
+          <h2>Routines</h2>
+          <p>This is where we’ll build Push Day, Pull Day, Legs, Full Body, cardio plans, and future routines.</p>
+        </div>
+      </section>
+
+      <section class="screen" id="library">
+        <div class="card">
+          <h2>Exercise Library</h2>
+          <p>This is where we’ll store weights, resistance machines, bodyweight exercises, and cardio machines.</p>
+        </div>
+      </section>
+
+      <section class="screen" id="workout">
+        <div class="card">
+          <h2>Workout Mode</h2>
+          <p>This will become your gym screen where you tick off sets as you go.</p>
+        </div>
+      </section>
+
+      <section class="screen" id="history">
+        <div class="card">
+          <h2>Workout History</h2>
+          <p>This will show completed workouts and progress over time.</p>
+        </div>
+      </section>
+
+      <section class="screen" id="pbs">
+        <div class="card">
+          <h2>Personal Bests</h2>
+          <p>This is where we’ll celebrate new PBs by weight, reps, sets, distance, or time.</p>
+        </div>
+      </section>
+
+    </main>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
