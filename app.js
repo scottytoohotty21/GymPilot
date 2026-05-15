@@ -15,17 +15,23 @@ const defaultData = {
 
 let gymPilotData = loadData();
 let currentRoutineExercises = [];
+let activeWorkout = null;
 
 document.addEventListener("DOMContentLoaded", () => {
   setupTabs();
   setupSaveTest();
   setupExerciseLibrary();
   setupRoutineBuilder();
+  setupWorkoutMode();
 
+  setDefaultWorkoutDate();
   updateDashboardCounts();
   renderExerciseLibrary();
   renderRoutineBuilder();
   populateRoutineExerciseSelect();
+  populateWorkoutRoutineSelect();
+  renderWorkoutMode();
+  renderHistory();
 
   updateSaveStatus("Ready");
 });
@@ -300,7 +306,7 @@ function deleteExercise(exerciseId) {
     return;
   }
 
-  const confirmed = confirm(`Delete ${exercise.name}?`);
+  const confirmed = confirm(`Delete ${exercise.name}? This will also remove it from saved routines.`);
 
   if (!confirmed) {
     return;
@@ -322,6 +328,7 @@ function deleteExercise(exerciseId) {
   updateDashboardCounts();
   renderExerciseLibrary();
   populateRoutineExerciseSelect();
+  populateWorkoutRoutineSelect();
   renderRoutineDraftList();
   renderRoutineBuilder();
   resetExerciseForm();
@@ -547,6 +554,7 @@ function saveRoutineFromForm() {
 
   updateDashboardCounts();
   renderRoutineBuilder();
+  populateWorkoutRoutineSelect();
   resetRoutineForm();
 }
 
@@ -693,10 +701,16 @@ function deleteRoutine(routineId) {
 
   gymPilotData.routines = gymPilotData.routines.filter((item) => item.id !== routineId);
 
+  if (activeWorkout && activeWorkout.routineId === routineId) {
+    activeWorkout = null;
+  }
+
   saveData();
 
   updateDashboardCounts();
   renderRoutineBuilder();
+  populateWorkoutRoutineSelect();
+  renderWorkoutMode();
   resetRoutineForm();
 }
 
@@ -724,10 +738,338 @@ function resetRoutineForm() {
   renderRoutineDraftList();
 }
 
-function sortRoutines() {
-  gymPilotData.routines.sort((a, b) => {
-    return a.name.localeCompare(b.name);
+/* ---------------------------
+   Workout Mode
+---------------------------- */
+
+function setupWorkoutMode() {
+  const startButton = document.getElementById("startWorkoutButton");
+  const clearButton = document.getElementById("clearWorkoutButton");
+  const saveButton = document.getElementById("saveWorkoutButton");
+
+  if (startButton) {
+    startButton.addEventListener("click", () => {
+      startWorkout();
+    });
+  }
+
+  if (clearButton) {
+    clearButton.addEventListener("click", () => {
+      clearActiveWorkout();
+    });
+  }
+
+  if (saveButton) {
+    saveButton.addEventListener("click", () => {
+      saveCompletedWorkout();
+    });
+  }
+}
+
+function setDefaultWorkoutDate() {
+  const workoutDate = document.getElementById("workoutDate");
+
+  if (!workoutDate) {
+    return;
+  }
+
+  workoutDate.value = new Date().toISOString().slice(0, 10);
+}
+
+function populateWorkoutRoutineSelect() {
+  const select = document.getElementById("workoutRoutineSelect");
+
+  if (!select) {
+    return;
+  }
+
+  const routines = gymPilotData.routines || [];
+
+  if (routines.length === 0) {
+    select.innerHTML = `<option value="">Create a routine first</option>`;
+    select.disabled = true;
+    return;
+  }
+
+  select.disabled = false;
+
+  select.innerHTML = `
+    <option value="">Choose routine</option>
+    ${routines.map((routine) => {
+      return `<option value="${routine.id}">${escapeHTML(routine.name)}</option>`;
+    }).join("")}
+  `;
+}
+
+function startWorkout() {
+  const routineId = document.getElementById("workoutRoutineSelect").value;
+  const workoutDate = document.getElementById("workoutDate").value || new Date().toISOString().slice(0, 10);
+
+  if (!routineId) {
+    alert("Choose a routine to start.");
+    return;
+  }
+
+  const routine = gymPilotData.routines.find((item) => item.id === routineId);
+
+  if (!routine) {
+    alert("Could not find that routine.");
+    return;
+  }
+
+  activeWorkout = {
+    id: crypto.randomUUID(),
+    routineId: routine.id,
+    routineName: routine.name,
+    date: workoutDate,
+    startedAt: new Date().toISOString(),
+    exercises: (routine.exercises || []).map((exercise) => {
+      const setCount = Number(exercise.plannedSets) || 1;
+
+      return {
+        workoutExerciseId: crypto.randomUUID(),
+        exerciseId: exercise.exerciseId,
+        name: exercise.name,
+        type: exercise.type || "",
+        muscleGroup: exercise.muscleGroup || "",
+        plannedSets: exercise.plannedSets,
+        plannedReps: exercise.plannedReps,
+        plannedWeight: exercise.plannedWeight,
+        sets: Array.from({ length: setCount }, (_, index) => ({
+          setId: crypto.randomUUID(),
+          setNumber: index + 1,
+          completed: false,
+          actualReps: exercise.plannedReps || "",
+          actualWeight: exercise.plannedWeight || ""
+        }))
+      };
+    })
+  };
+
+  renderWorkoutMode();
+}
+
+function renderWorkoutMode() {
+  const title = document.getElementById("activeWorkoutTitle");
+  const summary = document.getElementById("activeWorkoutSummary");
+  const list = document.getElementById("activeWorkoutList");
+  const saveButton = document.getElementById("saveWorkoutButton");
+
+  if (!title || !summary || !list || !saveButton) {
+    return;
+  }
+
+  if (!activeWorkout) {
+    title.textContent = "No active workout";
+    summary.textContent = "Choose a routine above to begin.";
+    list.innerHTML = "";
+    saveButton.classList.remove("visible");
+    return;
+  }
+
+  title.textContent = activeWorkout.routineName;
+  summary.textContent = `Workout date: ${formatDate(activeWorkout.date)}`;
+  saveButton.classList.add("visible");
+
+  list.innerHTML = activeWorkout.exercises.map((exercise) => {
+    const setRows = exercise.sets.map((set) => {
+      return `
+        <div class="workout-set-row">
+          <label class="workout-set-check">
+            <input
+              type="checkbox"
+              ${set.completed ? "checked" : ""}
+              onchange="updateWorkoutSet('${exercise.workoutExerciseId}', '${set.setId}', 'completed', this.checked)"
+            />
+            Set ${set.setNumber}
+          </label>
+
+          <label>
+            Actual reps
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value="${escapeHTML(set.actualReps)}"
+              onchange="updateWorkoutSet('${exercise.workoutExerciseId}', '${set.setId}', 'actualReps', this.value)"
+            />
+          </label>
+
+          <label>
+            Actual weight / resistance
+            <input
+              type="text"
+              value="${escapeHTML(set.actualWeight)}"
+              onchange="updateWorkoutSet('${exercise.workoutExerciseId}', '${set.setId}', 'actualWeight', this.value)"
+            />
+          </label>
+        </div>
+      `;
+    }).join("");
+
+    return `
+      <article class="workout-exercise-card">
+        <h4>${escapeHTML(exercise.name)}</h4>
+        <div class="routine-exercise-detail">
+          Planned: ${exercise.plannedSets || "?"} sets
+          ${exercise.plannedReps ? ` • ${escapeHTML(exercise.plannedReps)} reps` : ""}
+          ${exercise.plannedWeight ? ` • ${escapeHTML(exercise.plannedWeight)}` : ""}
+        </div>
+
+        <div class="workout-set-list">
+          ${setRows}
+        </div>
+      </article>
+    `;
+  }).join("");
+}
+
+function updateWorkoutSet(workoutExerciseId, setId, field, value) {
+  if (!activeWorkout) {
+    return;
+  }
+
+  activeWorkout.exercises = activeWorkout.exercises.map((exercise) => {
+    if (exercise.workoutExerciseId !== workoutExerciseId) {
+      return exercise;
+    }
+
+    return {
+      ...exercise,
+      sets: exercise.sets.map((set) => {
+        if (set.setId !== setId) {
+          return set;
+        }
+
+        return {
+          ...set,
+          [field]: field === "completed" ? Boolean(value) : value
+        };
+      })
+    };
   });
+}
+
+function clearActiveWorkout() {
+  if (!activeWorkout) {
+    renderWorkoutMode();
+    return;
+  }
+
+  const confirmed = confirm("Clear the active workout? Unsaved results will be lost.");
+
+  if (!confirmed) {
+    return;
+  }
+
+  activeWorkout = null;
+  renderWorkoutMode();
+}
+
+function saveCompletedWorkout() {
+  if (!activeWorkout) {
+    alert("There is no active workout to save.");
+    return;
+  }
+
+  const completedSets = activeWorkout.exercises.reduce((total, exercise) => {
+    return total + exercise.sets.filter((set) => set.completed).length;
+  }, 0);
+
+  if (completedSets === 0) {
+    const confirmed = confirm("No sets are ticked as complete. Save anyway?");
+
+    if (!confirmed) {
+      return;
+    }
+  }
+
+  const completedWorkout = {
+    ...activeWorkout,
+    completedAt: new Date().toISOString()
+  };
+
+  gymPilotData.completedWorkouts.unshift(completedWorkout);
+
+  activeWorkout = null;
+
+  saveData();
+  renderWorkoutMode();
+  renderHistory();
+
+  alert("Workout saved. Nice work.");
+}
+
+/* ---------------------------
+   History
+---------------------------- */
+
+function renderHistory() {
+  const historySummary = document.getElementById("historySummary");
+  const historyList = document.getElementById("historyList");
+
+  if (!historySummary || !historyList) {
+    return;
+  }
+
+  const workouts = gymPilotData.completedWorkouts || [];
+
+  if (workouts.length === 0) {
+    historySummary.textContent = "No workouts logged yet.";
+    historyList.innerHTML = `
+      <div class="empty-state">
+        Complete your first workout and it will appear here.
+      </div>
+    `;
+    return;
+  }
+
+  const totalSets = workouts.reduce((total, workout) => {
+    return total + workout.exercises.reduce((exerciseTotal, exercise) => {
+      return exerciseTotal + exercise.sets.filter((set) => set.completed).length;
+    }, 0);
+  }, 0);
+
+  historySummary.textContent = `${workouts.length} completed ${workouts.length === 1 ? "workout" : "workouts"} • ${totalSets} completed sets`;
+
+  historyList.innerHTML = workouts.map((workout) => {
+    const exerciseRows = workout.exercises.map((exercise) => {
+      const completedSetRows = exercise.sets
+        .filter((set) => set.completed)
+        .map((set) => {
+          const parts = [];
+
+          if (set.actualReps !== "") {
+            parts.push(`${escapeHTML(set.actualReps)} reps`);
+          }
+
+          if (set.actualWeight !== "") {
+            parts.push(`${escapeHTML(set.actualWeight)}`);
+          }
+
+          return `<div class="completed-set">Set ${set.setNumber}: ${parts.length ? parts.join(" • ") : "Completed"}</div>`;
+        })
+        .join("");
+
+      return `
+        <div class="history-exercise-row">
+          <strong>${escapeHTML(exercise.name)}</strong>
+          ${completedSetRows || `<div class="completed-set">No completed sets ticked.</div>`}
+        </div>
+      `;
+    }).join("");
+
+    return `
+      <article class="history-item">
+        <h4>${escapeHTML(workout.routineName)}</h4>
+        <div class="history-date">${formatDate(workout.date)}</div>
+
+        <div class="history-exercise-list">
+          ${exerciseRows}
+        </div>
+      </article>
+    `;
+  }).join("");
 }
 
 /* ---------------------------
@@ -736,6 +1078,12 @@ function sortRoutines() {
 
 function sortExercises() {
   gymPilotData.exercises.sort((a, b) => {
+    return a.name.localeCompare(b.name);
+  });
+}
+
+function sortRoutines() {
+  gymPilotData.routines.sort((a, b) => {
     return a.name.localeCompare(b.name);
   });
 }
@@ -777,6 +1125,20 @@ function updateSaveStatus(message) {
       saveStatus.textContent = "Ready";
     }, 1200);
   }
+}
+
+function formatDate(dateString) {
+  if (!dateString) {
+    return "No date";
+  }
+
+  const date = new Date(`${dateString}T00:00:00`);
+
+  return date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric"
+  });
 }
 
 function escapeHTML(value) {
