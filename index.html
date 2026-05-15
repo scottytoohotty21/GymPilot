@@ -62,11 +62,91 @@
       </section>
 
       <section class="screen" id="routines">
-        <div class="card">
-          <h2>Routines</h2>
-          <p>This is where we’ll build Push Day, Pull Day, Legs, Full Body, cardio plans, and future routines.</p>
+  <div class="card">
+    <div class="section-heading">
+      <div>
+        <h2>Routine Builder</h2>
+        <p>Create workout routines from your Exercise Library.</p>
+      </div>
+    </div>
+
+    <form id="routineForm" class="form-grid">
+      <input type="hidden" id="routineId" />
+
+      <label>
+        Routine name
+        <input id="routineName" type="text" placeholder="e.g. Push Day, Pull Day, Legs" required />
+      </label>
+
+      <label>
+        Routine focus
+        <input id="routineFocus" type="text" placeholder="e.g. Chest and triceps" />
+      </label>
+
+      <label class="full-width">
+        Routine notes
+        <textarea id="routineNotes" rows="3" placeholder="Warm-up notes, goals, tempo, rest times, etc."></textarea>
+      </label>
+
+      <div class="routine-exercise-builder full-width">
+        <h3>Add exercise to routine</h3>
+
+        <div class="form-grid compact-form">
+          <label>
+            Exercise
+            <select id="routineExerciseSelect">
+              <option value="">Choose exercise</option>
+            </select>
+          </label>
+
+          <label>
+            Planned sets
+            <input id="routineExerciseSets" type="number" min="0" step="1" placeholder="e.g. 3" />
+          </label>
+
+          <label>
+            Planned reps
+            <input id="routineExerciseReps" type="number" min="0" step="1" placeholder="e.g. 8" />
+          </label>
+
+          <label>
+            Planned weight / resistance
+            <input id="routineExerciseWeight" type="text" placeholder="e.g. 60kg, Level 8" />
+          </label>
+
+          <div class="form-actions full-width">
+            <button type="button" class="secondary-button" id="addExerciseToRoutineButton">
+              Add to routine
+            </button>
+          </div>
         </div>
-      </section>
+
+        <div id="routineDraftList" class="routine-draft-list"></div>
+      </div>
+
+      <div class="form-actions full-width">
+        <button type="submit" class="primary-button" id="saveRoutineButton">
+          Save routine
+        </button>
+
+        <button type="button" class="secondary-button" id="cancelEditRoutineButton">
+          Cancel edit
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="section-heading">
+      <div>
+        <h3>Saved routines</h3>
+        <p id="routineSummary">No routines saved yet.</p>
+      </div>
+    </div>
+
+    <div id="routineList" class="item-list"></div>
+  </div>
+</section>
 
       <section class="screen" id="library">
   <div class="card">
