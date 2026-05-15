@@ -39,27 +39,63 @@
     <main>
 
       <section class="screen active" id="dashboard">
-        <div class="card hero-card">
-          <h2>Today’s training</h2>
-          <p>No workout selected yet.</p>
+  <div class="card hero-card">
+    <div class="section-heading">
+      <div>
+        <h2>Today’s training</h2>
+        <p id="dashboardIntro">Choose a routine in Workout Mode to begin.</p>
+      </div>
+    </div>
 
-          <button class="primary-button" id="quickSaveTestButton">
-            Test save system
-          </button>
-        </div>
+    <div class="dashboard-actions">
+      <button class="primary-button" type="button" data-jump-screen="workout">
+        Start workout
+      </button>
 
-        <div class="grid-two">
-          <div class="card">
-            <h3>Routines</h3>
-            <p id="routineCount">0 saved routines</p>
-          </div>
+      <button class="secondary-button" type="button" data-jump-screen="routines">
+        Build routine
+      </button>
 
-          <div class="card">
-            <h3>Exercise library</h3>
-            <p id="exerciseCount">0 saved exercises</p>
-          </div>
-        </div>
-      </section>
+      <button class="secondary-button" type="button" data-jump-screen="library">
+        Add exercise
+      </button>
+    </div>
+  </div>
+
+  <div class="dashboard-grid">
+    <div class="card dashboard-highlight-card">
+      <h3>Last workout</h3>
+      <p id="lastWorkoutSummary">No workouts logged yet.</p>
+    </div>
+
+    <div class="card dashboard-highlight-card">
+      <h3>Latest PB</h3>
+      <p id="latestPbSummary">No PBs yet.</p>
+    </div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <span class="stat-number" id="routineCountNumber">0</span>
+      <span class="stat-label">Routines</span>
+    </div>
+
+    <div class="stat-card">
+      <span class="stat-number" id="exerciseCountNumber">0</span>
+      <span class="stat-label">Exercises</span>
+    </div>
+
+    <div class="stat-card">
+      <span class="stat-number" id="workoutCountNumber">0</span>
+      <span class="stat-label">Workouts</span>
+    </div>
+
+    <div class="stat-card">
+      <span class="stat-number" id="pbCountNumber">0</span>
+      <span class="stat-label">PBs</span>
+    </div>
+  </div>
+</section>
 
       <section class="screen" id="routines">
   <div class="card">
