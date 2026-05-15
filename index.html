@@ -228,18 +228,73 @@
 </section>
 
       <section class="screen" id="workout">
-        <div class="card">
-          <h2>Workout Mode</h2>
-          <p>This will become your gym screen where you tick off sets as you go.</p>
-        </div>
-      </section>
+  <div class="card">
+    <div class="section-heading">
+      <div>
+        <h2>Workout Mode</h2>
+        <p>Pick a routine, tick off your sets, and save your results.</p>
+      </div>
+    </div>
+
+    <div class="form-grid">
+      <label>
+        Choose routine
+        <select id="workoutRoutineSelect">
+          <option value="">Choose routine</option>
+        </select>
+      </label>
+
+      <label>
+        Workout date
+        <input id="workoutDate" type="date" />
+      </label>
+
+      <div class="form-actions full-width">
+        <button type="button" class="primary-button" id="startWorkoutButton">
+          Start workout
+        </button>
+
+        <button type="button" class="secondary-button" id="clearWorkoutButton">
+          Clear workout
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="activeWorkoutCard">
+    <div class="section-heading">
+      <div>
+        <h3 id="activeWorkoutTitle">No active workout</h3>
+        <p id="activeWorkoutSummary">Choose a routine above to begin.</p>
+      </div>
+    </div>
+
+    <div id="activeWorkoutList" class="workout-list"></div>
+
+    <div class="form-actions workout-save-actions">
+      <button type="button" class="primary-button" id="saveWorkoutButton">
+        Save completed workout
+      </button>
+    </div>
+  </div>
+</section>
 
       <section class="screen" id="history">
-        <div class="card">
-          <h2>Workout History</h2>
-          <p>This will show completed workouts and progress over time.</p>
-        </div>
-      </section>
+  <div class="card">
+    <div class="section-heading">
+      <div>
+        <h2>Workout History</h2>
+        <p>Review completed workouts and training notes.</p>
+      </div>
+    </div>
+
+    <div id="historySummary" class="summary-strip">
+      No workouts logged yet.
+    </div>
+
+    <div id="historyList" class="item-list"></div>
+  </div>
+</section>
 
       <section class="screen" id="pbs">
         <div class="card">
