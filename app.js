@@ -8,18 +8,25 @@ const defaultData = {
   personalBests: [],
   settings: {
     activeProfile: "Scott",
-    accountabilityPartner: "Laurie"
+    accountabilityPartner: "Laurie",
+    theme: "blue"
   }
 };
 
 let gymPilotData = loadData();
+let currentRoutineExercises = [];
 
 document.addEventListener("DOMContentLoaded", () => {
   setupTabs();
   setupSaveTest();
   setupExerciseLibrary();
+  setupRoutineBuilder();
+
   updateDashboardCounts();
   renderExerciseLibrary();
+  renderRoutineBuilder();
+  populateRoutineExerciseSelect();
+
   updateSaveStatus("Ready");
 });
 
@@ -36,6 +43,10 @@ function loadData() {
     return {
       ...structuredClone(defaultData),
       ...parsedData,
+      routines: parsedData.routines || [],
+      exercises: parsedData.exercises || [],
+      completedWorkouts: parsedData.completedWorkouts || [],
+      personalBests: parsedData.personalBests || [],
       settings: {
         ...defaultData.settings,
         ...(parsedData.settings || {})
@@ -91,13 +102,20 @@ function setupSaveTest() {
     };
 
     gymPilotData.exercises.push(testExercise);
+    sortExercises();
     saveData();
+
     updateDashboardCounts();
     renderExerciseLibrary();
+    populateRoutineExerciseSelect();
 
     alert("Save test complete. A test exercise was saved.");
   });
 }
+
+/* ---------------------------
+   Exercise Library
+---------------------------- */
 
 function setupExerciseLibrary() {
   const form = document.getElementById("exerciseForm");
@@ -160,8 +178,12 @@ function saveExerciseFromForm() {
 
   sortExercises();
   saveData();
+
   updateDashboardCounts();
   renderExerciseLibrary();
+  populateRoutineExerciseSelect();
+  renderRoutineDraftList();
+  renderRoutineBuilder();
   resetExerciseForm();
 }
 
@@ -286,9 +308,22 @@ function deleteExercise(exerciseId) {
 
   gymPilotData.exercises = gymPilotData.exercises.filter((item) => item.id !== exerciseId);
 
+  currentRoutineExercises = currentRoutineExercises.filter((item) => item.exerciseId !== exerciseId);
+
+  gymPilotData.routines = gymPilotData.routines.map((routine) => {
+    return {
+      ...routine,
+      exercises: (routine.exercises || []).filter((item) => item.exerciseId !== exerciseId)
+    };
+  });
+
   saveData();
+
   updateDashboardCounts();
   renderExerciseLibrary();
+  populateRoutineExerciseSelect();
+  renderRoutineDraftList();
+  renderRoutineBuilder();
   resetExerciseForm();
 }
 
@@ -311,6 +346,393 @@ function resetExerciseForm() {
     cancelButton.classList.remove("visible");
   }
 }
+
+/* ---------------------------
+   Routine Builder
+---------------------------- */
+
+function setupRoutineBuilder() {
+  const form = document.getElementById("routineForm");
+  const addExerciseButton = document.getElementById("addExerciseToRoutineButton");
+  const cancelButton = document.getElementById("cancelEditRoutineButton");
+
+  if (!form) {
+    return;
+  }
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    saveRoutineFromForm();
+  });
+
+  if (addExerciseButton) {
+    addExerciseButton.addEventListener("click", () => {
+      addExerciseToRoutineDraft();
+    });
+  }
+
+  if (cancelButton) {
+    cancelButton.addEventListener("click", () => {
+      resetRoutineForm();
+    });
+  }
+}
+
+function populateRoutineExerciseSelect() {
+  const select = document.getElementById("routineExerciseSelect");
+
+  if (!select) {
+    return;
+  }
+
+  const exercises = gymPilotData.exercises || [];
+
+  if (exercises.length === 0) {
+    select.innerHTML = `<option value="">Add exercises in the Library first</option>`;
+    select.disabled = true;
+    return;
+  }
+
+  select.disabled = false;
+
+  select.innerHTML = `
+    <option value="">Choose exercise</option>
+    ${exercises.map((exercise) => {
+      return `<option value="${exercise.id}">${escapeHTML(exercise.name)}</option>`;
+    }).join("")}
+  `;
+}
+
+function addExerciseToRoutineDraft() {
+  const exerciseId = document.getElementById("routineExerciseSelect").value;
+
+  if (!exerciseId) {
+    alert("Choose an exercise to add.");
+    return;
+  }
+
+  const exercise = gymPilotData.exercises.find((item) => item.id === exerciseId);
+
+  if (!exercise) {
+    alert("Could not find that exercise.");
+    return;
+  }
+
+  const routineExercise = {
+    draftId: crypto.randomUUID(),
+    exerciseId: exercise.id,
+    name: exercise.name,
+    type: exercise.type || "",
+    muscleGroup: exercise.muscleGroup || "",
+    plannedSets: numberOrEmpty(document.getElementById("routineExerciseSets").value) || exercise.defaultSets || "",
+    plannedReps: numberOrEmpty(document.getElementById("routineExerciseReps").value) || exercise.defaultReps || "",
+    plannedWeight: document.getElementById("routineExerciseWeight").value.trim() || exercise.defaultWeight || ""
+  };
+
+  currentRoutineExercises.push(routineExercise);
+
+  document.getElementById("routineExerciseSelect").value = "";
+  document.getElementById("routineExerciseSets").value = "";
+  document.getElementById("routineExerciseReps").value = "";
+  document.getElementById("routineExerciseWeight").value = "";
+
+  renderRoutineDraftList();
+}
+
+function renderRoutineDraftList() {
+  const draftList = document.getElementById("routineDraftList");
+
+  if (!draftList) {
+    return;
+  }
+
+  if (currentRoutineExercises.length === 0) {
+    draftList.innerHTML = `
+      <div class="empty-state">
+        No exercises added to this routine yet.
+      </div>
+    `;
+    return;
+  }
+
+  draftList.innerHTML = currentRoutineExercises.map((item, index) => {
+    const detailParts = [];
+
+    if (item.plannedSets !== "") {
+      detailParts.push(`${item.plannedSets} sets`);
+    }
+
+    if (item.plannedReps !== "") {
+      detailParts.push(`${item.plannedReps} reps`);
+    }
+
+    if (item.plannedWeight) {
+      detailParts.push(`${escapeHTML(item.plannedWeight)}`);
+    }
+
+    return `
+      <div class="routine-draft-item">
+        <div>
+          <strong>${index + 1}. ${escapeHTML(item.name)}</strong>
+          <div class="routine-exercise-detail">
+            ${detailParts.length ? detailParts.join(" • ") : "No plan entered"}
+          </div>
+        </div>
+
+        <button class="danger-button" type="button" onclick="removeExerciseFromRoutineDraft('${item.draftId}')">
+          Remove
+        </button>
+      </div>
+    `;
+  }).join("");
+}
+
+function removeExerciseFromRoutineDraft(draftId) {
+  currentRoutineExercises = currentRoutineExercises.filter((item) => item.draftId !== draftId);
+  renderRoutineDraftList();
+}
+
+function saveRoutineFromForm() {
+  const routineId = document.getElementById("routineId").value;
+
+  const routine = {
+    id: routineId || crypto.randomUUID(),
+    name: document.getElementById("routineName").value.trim(),
+    focus: document.getElementById("routineFocus").value.trim(),
+    notes: document.getElementById("routineNotes").value.trim(),
+    exercises: currentRoutineExercises.map((item) => ({
+      routineExerciseId: item.routineExerciseId || crypto.randomUUID(),
+      exerciseId: item.exerciseId,
+      name: item.name,
+      type: item.type || "",
+      muscleGroup: item.muscleGroup || "",
+      plannedSets: item.plannedSets,
+      plannedReps: item.plannedReps,
+      plannedWeight: item.plannedWeight
+    })),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  if (!routine.name) {
+    alert("Please add a routine name.");
+    return;
+  }
+
+  if (routine.exercises.length === 0) {
+    alert("Please add at least one exercise to the routine.");
+    return;
+  }
+
+  if (routineId) {
+    const existingRoutine = gymPilotData.routines.find((item) => item.id === routineId);
+
+    if (existingRoutine) {
+      routine.createdAt = existingRoutine.createdAt || new Date().toISOString();
+    }
+
+    gymPilotData.routines = gymPilotData.routines.map((item) => {
+      if (item.id === routineId) {
+        return routine;
+      }
+
+      return item;
+    });
+  } else {
+    gymPilotData.routines.push(routine);
+  }
+
+  sortRoutines();
+  saveData();
+
+  updateDashboardCounts();
+  renderRoutineBuilder();
+  resetRoutineForm();
+}
+
+function renderRoutineBuilder() {
+  const routineList = document.getElementById("routineList");
+  const routineSummary = document.getElementById("routineSummary");
+
+  if (!routineList) {
+    return;
+  }
+
+  const routines = gymPilotData.routines || [];
+
+  if (routineSummary) {
+    const count = routines.length;
+    routineSummary.textContent = `${count} saved ${count === 1 ? "routine" : "routines"}`;
+  }
+
+  renderRoutineDraftList();
+
+  if (routines.length === 0) {
+    routineList.innerHTML = `
+      <div class="empty-state">
+        No routines yet. Build your first one above.
+      </div>
+    `;
+    return;
+  }
+
+  routineList.innerHTML = routines.map((routine) => {
+    const routineExercises = routine.exercises || [];
+
+    const exerciseRows = routineExercises.map((item, index) => {
+      const detailParts = [];
+
+      if (item.plannedSets !== "") {
+        detailParts.push(`${item.plannedSets} sets`);
+      }
+
+      if (item.plannedReps !== "") {
+        detailParts.push(`${item.plannedReps} reps`);
+      }
+
+      if (item.plannedWeight) {
+        detailParts.push(`${escapeHTML(item.plannedWeight)}`);
+      }
+
+      return `
+        <div class="routine-exercise-row">
+          <strong>${index + 1}. ${escapeHTML(item.name)}</strong>
+          <div class="routine-exercise-detail">
+            ${detailParts.length ? detailParts.join(" • ") : "No plan entered"}
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    return `
+      <article class="routine-item">
+        <div class="routine-item-header">
+          <div>
+            <h4>${escapeHTML(routine.name)}</h4>
+            ${routine.focus ? `<div class="routine-focus">${escapeHTML(routine.focus)}</div>` : ""}
+          </div>
+
+          <span class="stat-chip">${routineExercises.length} ${routineExercises.length === 1 ? "exercise" : "exercises"}</span>
+        </div>
+
+        <div class="routine-exercise-list">
+          ${exerciseRows}
+        </div>
+
+        ${routine.notes ? `<div class="routine-notes">${escapeHTML(routine.notes)}</div>` : ""}
+
+        <div class="routine-actions">
+          <button class="small-button" type="button" onclick="editRoutine('${routine.id}')">
+            Edit
+          </button>
+
+          <button class="danger-button" type="button" onclick="deleteRoutine('${routine.id}')">
+            Delete
+          </button>
+        </div>
+      </article>
+    `;
+  }).join("");
+}
+
+function editRoutine(routineId) {
+  const routine = gymPilotData.routines.find((item) => item.id === routineId);
+
+  if (!routine) {
+    return;
+  }
+
+  document.getElementById("routineId").value = routine.id;
+  document.getElementById("routineName").value = routine.name || "";
+  document.getElementById("routineFocus").value = routine.focus || "";
+  document.getElementById("routineNotes").value = routine.notes || "";
+
+  currentRoutineExercises = (routine.exercises || []).map((item) => ({
+    draftId: crypto.randomUUID(),
+    routineExerciseId: item.routineExerciseId || crypto.randomUUID(),
+    exerciseId: item.exerciseId,
+    name: item.name,
+    type: item.type || "",
+    muscleGroup: item.muscleGroup || "",
+    plannedSets: item.plannedSets,
+    plannedReps: item.plannedReps,
+    plannedWeight: item.plannedWeight
+  }));
+
+  const saveButton = document.getElementById("saveRoutineButton");
+  const cancelButton = document.getElementById("cancelEditRoutineButton");
+
+  if (saveButton) {
+    saveButton.textContent = "Update routine";
+  }
+
+  if (cancelButton) {
+    cancelButton.classList.add("visible");
+  }
+
+  renderRoutineDraftList();
+
+  document.getElementById("routines").scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
+}
+
+function deleteRoutine(routineId) {
+  const routine = gymPilotData.routines.find((item) => item.id === routineId);
+
+  if (!routine) {
+    return;
+  }
+
+  const confirmed = confirm(`Delete ${routine.name}?`);
+
+  if (!confirmed) {
+    return;
+  }
+
+  gymPilotData.routines = gymPilotData.routines.filter((item) => item.id !== routineId);
+
+  saveData();
+
+  updateDashboardCounts();
+  renderRoutineBuilder();
+  resetRoutineForm();
+}
+
+function resetRoutineForm() {
+  const form = document.getElementById("routineForm");
+  const saveButton = document.getElementById("saveRoutineButton");
+  const cancelButton = document.getElementById("cancelEditRoutineButton");
+
+  if (form) {
+    form.reset();
+  }
+
+  document.getElementById("routineId").value = "";
+
+  currentRoutineExercises = [];
+
+  if (saveButton) {
+    saveButton.textContent = "Save routine";
+  }
+
+  if (cancelButton) {
+    cancelButton.classList.remove("visible");
+  }
+
+  renderRoutineDraftList();
+}
+
+function sortRoutines() {
+  gymPilotData.routines.sort((a, b) => {
+    return a.name.localeCompare(b.name);
+  });
+}
+
+/* ---------------------------
+   Shared helpers
+---------------------------- */
 
 function sortExercises() {
   gymPilotData.exercises.sort((a, b) => {
