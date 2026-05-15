@@ -28,13 +28,14 @@
     </header>
 
     <nav class="tab-bar" aria-label="Main navigation">
-      <button class="tab-button active" data-screen="dashboard">Dashboard</button>
-      <button class="tab-button" data-screen="routines">Routines</button>
-      <button class="tab-button" data-screen="library">Library</button>
-      <button class="tab-button" data-screen="workout">Workout</button>
-      <button class="tab-button" data-screen="history">History</button>
-      <button class="tab-button" data-screen="pbs">PBs</button>
-    </nav>
+  <button class="tab-button active" data-screen="dashboard">Dashboard</button>
+  <button class="tab-button" data-screen="routines">Routines</button>
+  <button class="tab-button" data-screen="library">Library</button>
+  <button class="tab-button" data-screen="workout">Workout</button>
+  <button class="tab-button" data-screen="history">History</button>
+  <button class="tab-button" data-screen="pbs">PBs</button>
+  <button class="tab-button" data-screen="settings">Settings</button>
+</nav>
 
     <main>
 
@@ -354,6 +355,63 @@
     </div>
 
     <div id="pbList" class="item-list"></div>
+  </div>
+</section>
+<section class="screen" id="settings">
+  <div class="card">
+    <div class="section-heading">
+      <div>
+        <h2>Settings</h2>
+        <p>Choose who is training and set each person’s colour theme.</p>
+      </div>
+    </div>
+
+    <div class="settings-profile-card">
+      <h3>Active profile</h3>
+      <p>The active profile is used for new workouts and new PBs.</p>
+
+      <label>
+        Training as
+        <select id="activeProfileSelect">
+          <option value="Scott">Scott</option>
+          <option value="Laurie">Laurie</option>
+        </select>
+      </label>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-heading">
+      <div>
+        <h3>Theme colours</h3>
+        <p>Scott and Laurie can each have their own colour scheme.</p>
+      </div>
+    </div>
+
+    <div class="form-grid">
+      <label>
+        Scott theme
+        <select id="scottThemeSelect">
+          <option value="blue">Blue</option>
+          <option value="pink">Soft Rose</option>
+        </select>
+      </label>
+
+      <label>
+        Laurie theme
+        <select id="laurieThemeSelect">
+          <option value="pink">Soft Rose</option>
+          <option value="blue">Blue</option>
+        </select>
+      </label>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Current setup</h3>
+    <div id="settingsSummary" class="summary-strip">
+      Loading settings...
+    </div>
   </div>
 </section>
 
