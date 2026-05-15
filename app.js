@@ -7,10 +7,19 @@ const defaultData = {
   completedWorkouts: [],
   personalBests: [],
   settings: {
-    activeProfile: "Scott",
-    accountabilityPartner: "Laurie",
-    theme: "blue"
-  }
+  activeProfile: "Scott",
+  accountabilityPartner: "Laurie",
+  profiles: [
+    {
+      name: "Scott",
+      theme: "blue"
+    },
+    {
+      name: "Laurie",
+      theme: "pink"
+    }
+  ]
+}
 };
 
 let gymPilotData = loadData();
@@ -23,7 +32,9 @@ document.addEventListener("DOMContentLoaded", () => {
   setupExerciseLibrary();
   setupRoutineBuilder();
   setupWorkoutMode();
+  setupSettings();
 
+  applyActiveTheme();
   setDefaultWorkoutDate();
   renderDashboard();
   renderExerciseLibrary();
@@ -32,9 +43,10 @@ document.addEventListener("DOMContentLoaded", () => {
   populateWorkoutRoutineSelect();
   renderWorkoutMode();
   renderHistory();
-  renderPersonalBests();
+renderPersonalBests();
+renderSettings();
 
-  updateSaveStatus("Ready");
+updateSaveStatus("Ready");
 });
 
 function loadData() {
@@ -55,9 +67,10 @@ function loadData() {
       completedWorkouts: parsedData.completedWorkouts || [],
       personalBests: parsedData.personalBests || [],
       settings: {
-        ...defaultData.settings,
-        ...(parsedData.settings || {})
-      }
+  ...defaultData.settings,
+  ...(parsedData.settings || {}),
+  profiles: getMergedProfiles(parsedData.settings?.profiles)
+}
     };
   } catch (error) {
     console.error("Could not load GymPilot data:", error);
@@ -110,12 +123,140 @@ function setupDashboardJumpButtons() {
 }
 
 /* ---------------------------
+   Settings / Profiles / Themes
+---------------------------- */
+
+function setupSettings() {
+  const activeProfileSelect = document.getElementById("activeProfileSelect");
+  const scottThemeSelect = document.getElementById("scottThemeSelect");
+  const laurieThemeSelect = document.getElementById("laurieThemeSelect");
+
+  if (activeProfileSelect) {
+    activeProfileSelect.addEventListener("change", () => {
+      gymPilotData.settings.activeProfile = activeProfileSelect.value;
+      saveData();
+      applyActiveTheme();
+      renderDashboard();
+      renderSettings();
+    });
+  }
+
+  if (scottThemeSelect) {
+    scottThemeSelect.addEventListener("change", () => {
+      updateProfileTheme("Scott", scottThemeSelect.value);
+    });
+  }
+
+  if (laurieThemeSelect) {
+    laurieThemeSelect.addEventListener("change", () => {
+      updateProfileTheme("Laurie", laurieThemeSelect.value);
+    });
+  }
+}
+
+function renderSettings() {
+  const activeProfileSelect = document.getElementById("activeProfileSelect");
+  const scottThemeSelect = document.getElementById("scottThemeSelect");
+  const laurieThemeSelect = document.getElementById("laurieThemeSelect");
+  const settingsSummary = document.getElementById("settingsSummary");
+
+  const activeProfile = getActiveProfile();
+  const scottProfile = getProfileByName("Scott");
+  const laurieProfile = getProfileByName("Laurie");
+
+  if (activeProfileSelect) {
+    activeProfileSelect.value = activeProfile;
+  }
+
+  if (scottThemeSelect) {
+    scottThemeSelect.value = scottProfile.theme;
+  }
+
+  if (laurieThemeSelect) {
+    laurieThemeSelect.value = laurieProfile.theme;
+  }
+
+  if (settingsSummary) {
+    settingsSummary.textContent = `Training as ${activeProfile}. Scott theme: ${themeLabel(scottProfile.theme)}. Laurie theme: ${themeLabel(laurieProfile.theme)}.`;
+  }
+}
+
+function updateProfileTheme(profileName, theme) {
+  gymPilotData.settings.profiles = getProfiles().map((profile) => {
+    if (profile.name === profileName) {
+      return {
+        ...profile,
+        theme
+      };
+    }
+
+    return profile;
+  });
+
+  saveData();
+  applyActiveTheme();
+  renderSettings();
+}
+
+function applyActiveTheme() {
+  const theme = getActiveTheme();
+
+  document.body.classList.remove("theme-blue", "theme-pink");
+  document.body.classList.add(`theme-${theme}`);
+}
+
+function getActiveProfile() {
+  return gymPilotData.settings.activeProfile || "Scott";
+}
+
+function getActiveTheme() {
+  return getProfileByName(getActiveProfile()).theme || "blue";
+}
+
+function getProfileByName(profileName) {
+  return getProfiles().find((profile) => profile.name === profileName) || {
+    name: profileName,
+    theme: "blue"
+  };
+}
+
+function getProfiles() {
+  return getMergedProfiles(gymPilotData.settings.profiles);
+}
+
+function getMergedProfiles(savedProfiles) {
+  const fallbackProfiles = structuredClone(defaultData.settings.profiles);
+  const profiles = Array.isArray(savedProfiles) ? savedProfiles : [];
+
+  return fallbackProfiles.map((fallbackProfile) => {
+    const savedProfile = profiles.find((profile) => profile.name === fallbackProfile.name);
+
+    return {
+      ...fallbackProfile,
+      ...(savedProfile || {})
+    };
+  });
+}
+
+function themeLabel(theme) {
+  if (theme === "pink") {
+    return "Soft Rose";
+  }
+
+  return "Blue";
+}
+
+function profileLabel(profile) {
+  return profile || "Scott";
+}
+/* ---------------------------
    Dashboard
 ---------------------------- */
 
 function renderDashboard() {
-  const lastWorkoutSummary = document.getElementById("lastWorkoutSummary");
-  const latestPbSummary = document.getElementById("latestPbSummary");
+  const dashboardIntro = document.getElementById("dashboardIntro");
+const lastWorkoutSummary = document.getElementById("lastWorkoutSummary");
+const latestPbSummary = document.getElementById("latestPbSummary");
 
   const routineCountNumber = document.getElementById("routineCountNumber");
   const exerciseCountNumber = document.getElementById("exerciseCountNumber");
@@ -124,6 +265,9 @@ function renderDashboard() {
 
   const workouts = gymPilotData.completedWorkouts || [];
   const personalBests = gymPilotData.personalBests || [];
+  if (dashboardIntro) {
+  dashboardIntro.textContent = `Training as ${getActiveProfile()}. Choose a routine in Workout Mode to begin.`;
+}
 
   if (lastWorkoutSummary) {
     if (workouts.length === 0) {
@@ -134,7 +278,7 @@ function renderDashboard() {
         return total + exercise.sets.filter((set) => set.completed).length;
       }, 0);
 
-      lastWorkoutSummary.textContent = `${latestWorkout.routineName} • ${formatDate(latestWorkout.date)} • ${completedSets} completed sets`;
+      lastWorkoutSummary.textContent = `${profileLabel(latestWorkout.profile)} • ${latestWorkout.routineName} • ${formatDate(latestWorkout.date)} • ${completedSets} completed sets`;
     }
   }
 
@@ -143,7 +287,7 @@ function renderDashboard() {
       latestPbSummary.textContent = "No PBs yet.";
     } else {
       const latestPb = personalBests[0];
-      latestPbSummary.textContent = `${latestPb.exerciseName} • ${latestPb.label}: ${latestPb.displayValue}`;
+      latestPbSummary.textContent = `${profileLabel(latestPb.profile)} • ${latestPb.exerciseName} • ${latestPb.label}: ${latestPb.displayValue}`;
     }
   }
 
@@ -863,11 +1007,12 @@ function startWorkout() {
   }
 
   activeWorkout = {
-    id: crypto.randomUUID(),
-    routineId: routine.id,
-    routineName: routine.name,
-    date: workoutDate,
-    startedAt: new Date().toISOString(),
+  id: crypto.randomUUID(),
+  profile: getActiveProfile(),
+  routineId: routine.id,
+  routineName: routine.name,
+  date: workoutDate,
+  startedAt: new Date().toISOString(),
     exercises: (routine.exercises || []).map((exercise) => {
       const setCount = Number(exercise.plannedSets) || 1;
 
@@ -913,7 +1058,7 @@ function renderWorkoutMode() {
   }
 
   title.textContent = activeWorkout.routineName;
-  summary.textContent = `Workout date: ${formatDate(activeWorkout.date)}`;
+  summary.textContent = `Training as ${profileLabel(activeWorkout.profile)} • Workout date: ${formatDate(activeWorkout.date)}`;
   saveButton.classList.add("visible");
 
   list.innerHTML = activeWorkout.exercises.map((exercise) => {
@@ -1046,9 +1191,10 @@ function saveCompletedWorkout() {
 
   saveData();
   renderDashboard();
-  renderWorkoutMode();
-  renderHistory();
-  renderPersonalBests();
+renderWorkoutMode();
+renderHistory();
+renderPersonalBests();
+renderSettings();
 
   if (newPersonalBests.length > 0) {
     const pbText = newPersonalBests
@@ -1124,7 +1270,7 @@ function renderHistory() {
     return `
       <article class="history-item">
         <h4>${escapeHTML(workout.routineName)}</h4>
-        <div class="history-date">${formatDate(workout.date)}</div>
+        <div class="history-date">${profileLabel(workout.profile)} • ${formatDate(workout.date)}</div>
 
         <div class="history-exercise-list">
           ${exerciseRows}
@@ -1163,7 +1309,7 @@ function checkForPersonalBests(workout) {
     const completedSetCount = completedSets.length;
 
     if (Number.isFinite(maxWeight)) {
-      const currentBestWeight = getCurrentBestValue(exercise.exerciseId, "maxWeight");
+      const currentBestWeight = getCurrentBestValue(exercise.exerciseId, "maxWeight", workout.profile);
 
       if (currentBestWeight === null || maxWeight > currentBestWeight) {
         newPersonalBests.push(createPersonalBestRecord({
@@ -1178,7 +1324,7 @@ function checkForPersonalBests(workout) {
     }
 
     if (Number.isFinite(maxReps)) {
-      const currentBestReps = getCurrentBestValue(exercise.exerciseId, "maxReps");
+      const currentBestReps = getCurrentBestValue(exercise.exerciseId, "maxReps", workout.profile);
 
       if (currentBestReps === null || maxReps > currentBestReps) {
         newPersonalBests.push(createPersonalBestRecord({
@@ -1192,7 +1338,7 @@ function checkForPersonalBests(workout) {
       }
     }
 
-    const currentBestSets = getCurrentBestValue(exercise.exerciseId, "maxSets");
+    const currentBestSets = getCurrentBestValue(exercise.exerciseId, "maxSets", workout.profile);
 
     if (currentBestSets === null || completedSetCount > currentBestSets) {
       newPersonalBests.push(createPersonalBestRecord({
@@ -1212,9 +1358,10 @@ function checkForPersonalBests(workout) {
 function createPersonalBestRecord({ exercise, workout, type, label, value, displayValue }) {
   return {
     id: crypto.randomUUID(),
-    exerciseId: exercise.exerciseId,
-    exerciseName: exercise.name,
-    routineId: workout.routineId,
+    profile: profileLabel(workout.profile),
+exerciseId: exercise.exerciseId,
+exerciseName: exercise.name,
+routineId: workout.routineId,
     routineName: workout.routineName,
     workoutId: workout.id,
     date: workout.date,
@@ -1226,9 +1373,14 @@ function createPersonalBestRecord({ exercise, workout, type, label, value, displ
   };
 }
 
-function getCurrentBestValue(exerciseId, type) {
+function getCurrentBestValue(exerciseId, type, profile) {
+  const activeProfile = profileLabel(profile);
+
   const matchingBest = (gymPilotData.personalBests || [])
-    .filter((pb) => pb.exerciseId === exerciseId && pb.type === type)
+    .filter((pb) => {
+      const pbProfile = profileLabel(pb.profile);
+      return pb.exerciseId === exerciseId && pb.type === type && pbProfile === activeProfile;
+    })
     .sort((a, b) => Number(b.value) - Number(a.value))[0];
 
   if (!matchingBest) {
@@ -1275,7 +1427,7 @@ function renderPersonalBests() {
     <div class="pb-celebration-icon">🎉</div>
     <div>
       <h3>Latest PB: ${escapeHTML(latestPb.exerciseName)}</h3>
-      <p>${escapeHTML(latestPb.label)} — ${escapeHTML(latestPb.displayValue)}</p>
+      <p>${escapeHTML(profileLabel(latestPb.profile))} • ${escapeHTML(latestPb.label)} — ${escapeHTML(latestPb.displayValue)}</p>
     </div>
   `;
 
@@ -1293,8 +1445,8 @@ function renderPersonalBests() {
 
         <div class="pb-value">${escapeHTML(pb.displayValue)}</div>
         <div class="pb-date">
-          ${formatDate(pb.date)} • ${escapeHTML(pb.routineName || "Workout")}
-        </div>
+  ${escapeHTML(profileLabel(pb.profile))} • ${formatDate(pb.date)} • ${escapeHTML(pb.routineName || "Workout")}
+</div>
       </article>
     `;
   }).join("");
