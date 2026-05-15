@@ -732,3 +732,35 @@ textarea {
     justify-content: center;
   }
 }
+body.theme-blue {
+  --accent: #38bdf8;
+  --accent-strong: #0284c7;
+}
+
+body.theme-pink {
+  --accent: #f472b6;
+  --accent-strong: #db2777;
+}
+
+body.theme-pink .status-pill,
+body.theme-pink .summary-strip,
+body.theme-pink .small-button {
+  background: rgba(244, 114, 182, 0.14);
+  color: #fce7f3;
+  border-color: rgba(244, 114, 182, 0.35);
+}
+
+.settings-profile-card {
+  border: 1px solid var(--border);
+  background: rgba(15, 23, 42, 0.72);
+  border-radius: 18px;
+  padding: 16px;
+}
+
+.settings-profile-card h3 {
+  margin-top: 0;
+}
+
+.settings-profile-card p {
+  color: var(--muted);
+}
