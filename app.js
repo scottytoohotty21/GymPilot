@@ -19,13 +19,13 @@ let activeWorkout = null;
 
 document.addEventListener("DOMContentLoaded", () => {
   setupTabs();
-  setupSaveTest();
+  setupDashboardJumpButtons();
   setupExerciseLibrary();
   setupRoutineBuilder();
   setupWorkoutMode();
 
   setDefaultWorkoutDate();
-  updateDashboardCounts();
+  renderDashboard();
   renderExerciseLibrary();
   renderRoutineBuilder();
   populateRoutineExerciseSelect();
@@ -76,48 +76,92 @@ function setupTabs() {
 
   tabButtons.forEach((button) => {
     button.addEventListener("click", () => {
-      const targetScreen = button.dataset.screen;
-
-      tabButtons.forEach((tab) => tab.classList.remove("active"));
-      screens.forEach((screen) => screen.classList.remove("active"));
-
-      button.classList.add("active");
-      document.getElementById(targetScreen).classList.add("active");
+      showScreen(button.dataset.screen);
     });
   });
 }
 
-function setupSaveTest() {
-  const button = document.getElementById("quickSaveTestButton");
+function showScreen(screenId) {
+  const tabButtons = document.querySelectorAll(".tab-button");
+  const screens = document.querySelectorAll(".screen");
 
-  if (!button) {
-    return;
+  tabButtons.forEach((tab) => {
+    tab.classList.toggle("active", tab.dataset.screen === screenId);
+  });
+
+  screens.forEach((screen) => {
+    screen.classList.toggle("active", screen.id === screenId);
+  });
+
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth"
+  });
+}
+
+function setupDashboardJumpButtons() {
+  const jumpButtons = document.querySelectorAll("[data-jump-screen]");
+
+  jumpButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      showScreen(button.dataset.jumpScreen);
+    });
+  });
+}
+
+/* ---------------------------
+   Dashboard
+---------------------------- */
+
+function renderDashboard() {
+  const lastWorkoutSummary = document.getElementById("lastWorkoutSummary");
+  const latestPbSummary = document.getElementById("latestPbSummary");
+
+  const routineCountNumber = document.getElementById("routineCountNumber");
+  const exerciseCountNumber = document.getElementById("exerciseCountNumber");
+  const workoutCountNumber = document.getElementById("workoutCountNumber");
+  const pbCountNumber = document.getElementById("pbCountNumber");
+
+  const workouts = gymPilotData.completedWorkouts || [];
+  const personalBests = gymPilotData.personalBests || [];
+
+  if (lastWorkoutSummary) {
+    if (workouts.length === 0) {
+      lastWorkoutSummary.textContent = "No workouts logged yet.";
+    } else {
+      const latestWorkout = workouts[0];
+      const completedSets = latestWorkout.exercises.reduce((total, exercise) => {
+        return total + exercise.sets.filter((set) => set.completed).length;
+      }, 0);
+
+      lastWorkoutSummary.textContent = `${latestWorkout.routineName} • ${formatDate(latestWorkout.date)} • ${completedSets} completed sets`;
+    }
   }
 
-  button.addEventListener("click", () => {
-    const testExercise = {
-      id: crypto.randomUUID(),
-      name: "Test Exercise",
-      type: "Weights",
-      muscleGroup: "Test",
-      defaultSets: 3,
-      defaultReps: 10,
-      defaultWeight: "20kg",
-      notes: "Created by the save test button.",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+  if (latestPbSummary) {
+    if (personalBests.length === 0) {
+      latestPbSummary.textContent = "No PBs yet.";
+    } else {
+      const latestPb = personalBests[0];
+      latestPbSummary.textContent = `${latestPb.exerciseName} • ${latestPb.label}: ${latestPb.displayValue}`;
+    }
+  }
 
-    gymPilotData.exercises.push(testExercise);
-    sortExercises();
-    saveData();
+  if (routineCountNumber) {
+    routineCountNumber.textContent = gymPilotData.routines.length;
+  }
 
-    updateDashboardCounts();
-    renderExerciseLibrary();
-    populateRoutineExerciseSelect();
+  if (exerciseCountNumber) {
+    exerciseCountNumber.textContent = gymPilotData.exercises.length;
+  }
 
-    alert("Save test complete. A test exercise was saved.");
-  });
+  if (workoutCountNumber) {
+    workoutCountNumber.textContent = workouts.length;
+  }
+
+  if (pbCountNumber) {
+    pbCountNumber.textContent = personalBests.length;
+  }
 }
 
 /* ---------------------------
@@ -186,7 +230,7 @@ function saveExerciseFromForm() {
   sortExercises();
   saveData();
 
-  updateDashboardCounts();
+  renderDashboard();
   renderExerciseLibrary();
   populateRoutineExerciseSelect();
   renderRoutineDraftList();
@@ -326,7 +370,7 @@ function deleteExercise(exerciseId) {
 
   saveData();
 
-  updateDashboardCounts();
+  renderDashboard();
   renderExerciseLibrary();
   populateRoutineExerciseSelect();
   populateWorkoutRoutineSelect();
@@ -553,7 +597,7 @@ function saveRoutineFromForm() {
   sortRoutines();
   saveData();
 
-  updateDashboardCounts();
+  renderDashboard();
   renderRoutineBuilder();
   populateWorkoutRoutineSelect();
   resetRoutineForm();
@@ -708,7 +752,7 @@ function deleteRoutine(routineId) {
 
   saveData();
 
-  updateDashboardCounts();
+  renderDashboard();
   renderRoutineBuilder();
   populateWorkoutRoutineSelect();
   renderWorkoutMode();
@@ -892,7 +936,7 @@ function renderWorkoutMode() {
               min="0"
               step="1"
               value="${escapeHTML(set.actualReps)}"
-              onchange="updateWorkoutSet('${exercise.workoutExerciseId}', '${set.setId}', 'actualReps', this.value)"
+              oninput="updateWorkoutSet('${exercise.workoutExerciseId}', '${set.setId}', 'actualReps', this.value)"
             />
           </label>
 
@@ -901,7 +945,7 @@ function renderWorkoutMode() {
             <input
               type="text"
               value="${escapeHTML(set.actualWeight)}"
-              onchange="updateWorkoutSet('${exercise.workoutExerciseId}', '${set.setId}', 'actualWeight', this.value)"
+              oninput="updateWorkoutSet('${exercise.workoutExerciseId}', '${set.setId}', 'actualWeight', this.value)"
             />
           </label>
         </div>
@@ -1001,6 +1045,7 @@ function saveCompletedWorkout() {
   activeWorkout = null;
 
   saveData();
+  renderDashboard();
   renderWorkoutMode();
   renderHistory();
   renderPersonalBests();
@@ -1291,21 +1336,6 @@ function extractFirstNumber(value) {
   }
 
   return Number(match[0]);
-}
-
-function updateDashboardCounts() {
-  const routineCount = document.getElementById("routineCount");
-  const exerciseCount = document.getElementById("exerciseCount");
-
-  if (routineCount) {
-    const count = gymPilotData.routines.length;
-    routineCount.textContent = `${count} saved ${count === 1 ? "routine" : "routines"}`;
-  }
-
-  if (exerciseCount) {
-    const count = gymPilotData.exercises.length;
-    exerciseCount.textContent = `${count} saved ${count === 1 ? "exercise" : "exercises"}`;
-  }
 }
 
 function updateSaveStatus(message) {
