@@ -32,6 +32,7 @@ document.addEventListener("DOMContentLoaded", () => {
   populateWorkoutRoutineSelect();
   renderWorkoutMode();
   renderHistory();
+  renderPersonalBests();
 
   updateSaveStatus("Ready");
 });
@@ -989,15 +990,31 @@ function saveCompletedWorkout() {
     completedAt: new Date().toISOString()
   };
 
+  const newPersonalBests = checkForPersonalBests(completedWorkout);
+
   gymPilotData.completedWorkouts.unshift(completedWorkout);
+
+  if (newPersonalBests.length > 0) {
+    gymPilotData.personalBests.unshift(...newPersonalBests);
+  }
 
   activeWorkout = null;
 
   saveData();
   renderWorkoutMode();
   renderHistory();
+  renderPersonalBests();
 
-  alert("Workout saved. Nice work.");
+  if (newPersonalBests.length > 0) {
+    const pbText = newPersonalBests
+      .slice(0, 5)
+      .map((pb) => `${pb.exerciseName}: ${pb.label} — ${pb.displayValue}`)
+      .join("\n");
+
+    alert(`🎉 New PB${newPersonalBests.length === 1 ? "" : "s"}!\n\n${pbText}`);
+  } else {
+    alert("Workout saved. Nice work.");
+  }
 }
 
 /* ---------------------------
@@ -1073,6 +1090,172 @@ function renderHistory() {
 }
 
 /* ---------------------------
+   Personal Bests
+---------------------------- */
+
+function checkForPersonalBests(workout) {
+  const newPersonalBests = [];
+
+  workout.exercises.forEach((exercise) => {
+    const completedSets = exercise.sets.filter((set) => set.completed);
+
+    if (completedSets.length === 0) {
+      return;
+    }
+
+    const maxWeight = Math.max(
+      ...completedSets
+        .map((set) => extractFirstNumber(set.actualWeight))
+        .filter((value) => value !== null)
+    );
+
+    const maxReps = Math.max(
+      ...completedSets
+        .map((set) => Number(set.actualReps))
+        .filter((value) => !Number.isNaN(value))
+    );
+
+    const completedSetCount = completedSets.length;
+
+    if (Number.isFinite(maxWeight)) {
+      const currentBestWeight = getCurrentBestValue(exercise.exerciseId, "maxWeight");
+
+      if (currentBestWeight === null || maxWeight > currentBestWeight) {
+        newPersonalBests.push(createPersonalBestRecord({
+          exercise,
+          workout,
+          type: "maxWeight",
+          label: "Heaviest weight / resistance",
+          value: maxWeight,
+          displayValue: `${maxWeight}`
+        }));
+      }
+    }
+
+    if (Number.isFinite(maxReps)) {
+      const currentBestReps = getCurrentBestValue(exercise.exerciseId, "maxReps");
+
+      if (currentBestReps === null || maxReps > currentBestReps) {
+        newPersonalBests.push(createPersonalBestRecord({
+          exercise,
+          workout,
+          type: "maxReps",
+          label: "Most reps in one set",
+          value: maxReps,
+          displayValue: `${maxReps} reps`
+        }));
+      }
+    }
+
+    const currentBestSets = getCurrentBestValue(exercise.exerciseId, "maxSets");
+
+    if (currentBestSets === null || completedSetCount > currentBestSets) {
+      newPersonalBests.push(createPersonalBestRecord({
+        exercise,
+        workout,
+        type: "maxSets",
+        label: "Most completed sets",
+        value: completedSetCount,
+        displayValue: `${completedSetCount} sets`
+      }));
+    }
+  });
+
+  return newPersonalBests;
+}
+
+function createPersonalBestRecord({ exercise, workout, type, label, value, displayValue }) {
+  return {
+    id: crypto.randomUUID(),
+    exerciseId: exercise.exerciseId,
+    exerciseName: exercise.name,
+    routineId: workout.routineId,
+    routineName: workout.routineName,
+    workoutId: workout.id,
+    date: workout.date,
+    type,
+    label,
+    value,
+    displayValue,
+    achievedAt: new Date().toISOString()
+  };
+}
+
+function getCurrentBestValue(exerciseId, type) {
+  const matchingBest = (gymPilotData.personalBests || [])
+    .filter((pb) => pb.exerciseId === exerciseId && pb.type === type)
+    .sort((a, b) => Number(b.value) - Number(a.value))[0];
+
+  if (!matchingBest) {
+    return null;
+  }
+
+  return Number(matchingBest.value);
+}
+
+function renderPersonalBests() {
+  const pbSummary = document.getElementById("pbSummary");
+  const latestPbCelebration = document.getElementById("latestPbCelebration");
+  const pbList = document.getElementById("pbList");
+
+  if (!pbSummary || !latestPbCelebration || !pbList) {
+    return;
+  }
+
+  const personalBests = gymPilotData.personalBests || [];
+
+  if (personalBests.length === 0) {
+    pbSummary.textContent = "No PBs yet.";
+    latestPbCelebration.innerHTML = `
+      <div class="pb-celebration-icon">🎉</div>
+      <div>
+        <h3>PBs will appear here</h3>
+        <p>Complete a workout and GymPilot will check for new records.</p>
+      </div>
+    `;
+
+    pbList.innerHTML = `
+      <div class="empty-state">
+        No personal bests logged yet.
+      </div>
+    `;
+    return;
+  }
+
+  const latestPb = personalBests[0];
+
+  pbSummary.textContent = `${personalBests.length} saved ${personalBests.length === 1 ? "PB" : "PBs"}`;
+
+  latestPbCelebration.innerHTML = `
+    <div class="pb-celebration-icon">🎉</div>
+    <div>
+      <h3>Latest PB: ${escapeHTML(latestPb.exerciseName)}</h3>
+      <p>${escapeHTML(latestPb.label)} — ${escapeHTML(latestPb.displayValue)}</p>
+    </div>
+  `;
+
+  pbList.innerHTML = personalBests.map((pb) => {
+    return `
+      <article class="pb-item">
+        <div class="pb-item-header">
+          <div>
+            <h4>${escapeHTML(pb.exerciseName)}</h4>
+            <div class="pb-type">${escapeHTML(pb.label)}</div>
+          </div>
+
+          <span class="pb-badge">PB</span>
+        </div>
+
+        <div class="pb-value">${escapeHTML(pb.displayValue)}</div>
+        <div class="pb-date">
+          ${formatDate(pb.date)} • ${escapeHTML(pb.routineName || "Workout")}
+        </div>
+      </article>
+    `;
+  }).join("");
+}
+
+/* ---------------------------
    Shared helpers
 ---------------------------- */
 
@@ -1094,6 +1277,20 @@ function numberOrEmpty(value) {
   }
 
   return Number(value);
+}
+
+function extractFirstNumber(value) {
+  if (value === "" || value === null || value === undefined) {
+    return null;
+  }
+
+  const match = String(value).match(/\d+(\.\d+)?/);
+
+  if (!match) {
+    return null;
+  }
+
+  return Number(match[0]);
 }
 
 function updateDashboardCounts() {
