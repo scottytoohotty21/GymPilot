@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>GymPilot Theme Test</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #f9fafb;
+      min-height: 100vh;
+    }
+
+    .theme-section {
+      min-height: 100vh;
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .theme-blue {
+      background:
+        radial-gradient(circle at top left, rgba(56, 189, 248, 0.22), transparent 34%),
+        radial-gradient(circle at bottom right, rgba(14, 165, 233, 0.13), transparent 32%),
+        linear-gradient(180deg, #020617 0%, #0f172a 100%);
+    }
+
+    .theme-soft-rose {
+      background:
+        radial-gradient(circle at top left, rgba(244, 114, 182, 0.26), transparent 34%),
+        radial-gradient(circle at bottom right, rgba(219, 39, 119, 0.14), transparent 32%),
+        linear-gradient(180deg, #120817 0%, #1f1020 100%);
+    }
+
+    .theme-strong-rose {
+      background:
+        radial-gradient(circle at top left, rgba(244, 114, 182, 0.34), transparent 36%),
+        radial-gradient(circle at bottom right, rgba(219, 39, 119, 0.22), transparent 34%),
+        linear-gradient(180deg, #170819 0%, #2a1025 100%);
+    }
+
+    .theme-purple-pink {
+      background:
+        radial-gradient(circle at top left, rgba(232, 121, 249, 0.28), transparent 34%),
+        radial-gradient(circle at bottom right, rgba(192, 38, 211, 0.16), transparent 32%),
+        linear-gradient(180deg, #10091b 0%, #21112c 100%);
+    }
+
+    .preview-card {
+      width: min(720px, 100%);
+      background: rgba(17, 24, 39, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 28px;
+      padding: 22px;
+      box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(10px);
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: clamp(2rem, 9vw, 4rem);
+      letter-spacing: -0.06em;
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      color: #f9fafb;
+    }
+
+    p {
+      color: #9ca3af;
+      line-height: 1.5;
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .button {
+      border: 0;
+      border-radius: 14px;
+      padding: 12px 16px;
+      font-weight: 800;
+      color: #082f49;
+    }
+
+    .theme-blue .button {
+      background: #38bdf8;
+    }
+
+    .theme-soft-rose .button,
+    .theme-strong-rose .button {
+      background: #f472b6;
+      color: #3b0824;
+    }
+
+    .theme-purple-pink .button {
+      background: #e879f9;
+      color: #3b063f;
+    }
+
+    .secondary {
+      background: rgba(255,255,255,0.1) !important;
+      color: #f9fafb !important;
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .stat {
+      background: rgba(15, 23, 42, 0.72);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 18px;
+      padding: 14px;
+    }
+
+    .stat-number {
+      display: block;
+      font-size: 2rem;
+      font-weight: 900;
+    }
+
+    .theme-blue .stat-number {
+      color: #38bdf8;
+    }
+
+    .theme-soft-rose .stat-number,
+    .theme-strong-rose .stat-number {
+      color: #f472b6;
+    }
+
+    .theme-purple-pink .stat-number {
+      color: #e879f9;
+    }
+
+    .stat-label {
+      color: #9ca3af;
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+
+    .hex {
+      margin-top: 16px;
+      font-family: monospace;
+      color: #d1d5db;
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 650px) {
+      .stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <section class="theme-section theme-blue">
+    <div class="preview-card">
+      <h1>GymPilot</h1>
+      <h2>Scott — Blue Theme</h2>
+      <p>Dark navy background with blue glow and blue accent buttons.</p>
+
+      <div class="button-row">
+        <button class="button">Start workout</button>
+        <button class="button secondary">Build routine</button>
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <span class="stat-number">4</span>
+          <span class="stat-label">Routines</span>
+        </div>
+        <div class="stat">
+          <span class="stat-number">18</span>
+          <span class="stat-label">Exercises</span>
+        </div>
+        <div class="stat">
+          <span class="stat-number">7</span>
+          <span class="stat-label">Workouts</span>
+        </div>
+        <div class="stat">
+          <span class="stat-number">11</span>
+          <span class="stat-label">PBs</span>
+        </div>
+      </div>
+
+      <div class="hex">
+        Background: #020617 → #0f172a<br />
+        Accent: #38bdf8
+      </div>
+    </div>
+  </section>
+
+  <section class="theme-section theme-soft-rose">
+    <div class="preview-card">
+      <h1>GymPilot</h1>
+      <h2>Laurie — Soft Rose Theme</h2>
+      <p>Dark plum background with soft rose glow and rose accent buttons.</p>
+
+      <div class="button-row">
+        <button class="button">Start workout</button>
+        <button class="button secondary">Build routine</button>
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <span class="stat-number">4</span>
+          <span class="stat-label">Routines</span>
+        </div>
+        <div class="stat">
+          <span class="stat-number">18</span>
+          <span class="stat-label">Exercises</span>
+        </div>
+        <div class="stat">
+          <span class="stat-number">7</span>
+          <span class="stat-label">Workouts</span>
+        </div>
+        <div class="stat">
+          <span class="stat-number">11</span>
+          <span class="stat-label">PBs</span>
+        </div>
+      </div>
+
+      <div class="hex">
+        Background: #120817 → #1f1020<br />
+        Accent: #f472b6
+      </div>
+    </div>
+  </section>
+
+  <section class="theme-section theme-strong-rose">
+    <div class="preview-card">
+      <h1>GymPilot</h1>
+      <h2>Laurie — Stronger Rose Theme</h2>
+      <p>A slightly richer pink/plum background. Still dark and readable, but more obviously pink.</p>
+
+      <div class="button-row">
+        <button class="button">Start workout</button>
+        <button class="button secondary">Build routine</button>
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <span class="stat-number">4</span>
+          <span class="stat-label">Routines</span>
+        </div>
+        <div class="stat">
+          <span class="stat-number">18</span>
+          <span class="stat-label">Exercises</span>
+        </div>
+        <div class="stat">
+          <span class="stat-number">7</span>
+          <span class="stat-label">Workouts</span>
+        </div>
+        <div class="stat">
+          <span class="stat-number">11</span>
+          <span class="stat-label">PBs</span>
+        </div>
+      </div>
+
+      <div class="hex">
+        Background: #170819 → #2a1025<br />
+        Accent: #f472b6
+      </div>
+    </div>
+  </section>
+
+  <section class="theme-section theme-purple-pink">
+    <div class="preview-card">
+      <h1>GymPilot</h1>
+      <h2>Purple Pink Theme</h2>
+      <p>A more purple/magenta version if Soft Rose feels too gentle.</p>
+
+      <div class="button-row">
+        <button class="button">Start workout</button>
+        <button class="button secondary">Build routine</button>
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <span class="stat-number">4</span>
+          <span class="stat-label">Routines</span>
+        </div>
+        <div class="stat">
+          <span class="stat-number">18</span>
+          <span class="stat-label">Exercises</span>
+        </div>
+        <div class="stat">
+          <span class="stat-number">7</span>
+          <span class="stat-label">Workouts</span>
+        </div>
+        <div class="stat">
+          <span class="stat-number">11</span>
+          <span class="stat-label">PBs</span>
+        </div>
+      </div>
+
+      <div class="hex">
+        Background: #10091b → #21112c<br />
+        Accent: #e879f9
+      </div>
+    </div>
+  </section>
+
+</body>
+</html>
