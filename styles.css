@@ -1,5 +1,6 @@
 :root {
   --bg: #0f172a;
+  --bg-glow: rgba(56, 189, 248, 0.18);
   --panel: #111827;
   --panel-light: #1f2937;
   --text: #f9fafb;
@@ -21,7 +22,7 @@ body {
   margin: 0;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   background:
-    radial-gradient(circle at top left, rgba(56, 189, 248, 0.18), transparent 30%),
+    radial-gradient(circle at top left, var(--bg-glow), transparent 30%),
     linear-gradient(180deg, #020617 0%, var(--bg) 100%);
   color: var(--text);
   min-height: 100vh;
@@ -733,11 +734,15 @@ textarea {
   }
 }
 body.theme-blue {
+  --bg: #0f172a;
+  --bg-glow: rgba(56, 189, 248, 0.18);
   --accent: #38bdf8;
   --accent-strong: #0284c7;
 }
 
 body.theme-pink {
+  --bg: #1f1020;
+  --bg-glow: rgba(244, 114, 182, 0.22);
   --accent: #f472b6;
   --accent-strong: #db2777;
 }
