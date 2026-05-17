@@ -12,10 +12,10 @@
     }
 
     :root {
-      --bg-start: #020617;
-      --bg-end: #0f172a;
-      --glow-one: rgba(56, 189, 248, 0.22);
-      --glow-two: rgba(14, 165, 233, 0.13);
+      --bg-start: #0284c7;
+      --bg-end: #0ea5e9;
+      --glow-one: rgba(186, 230, 253, 0.42);
+      --glow-two: rgba(7, 89, 133, 0.35);
       --accent: #38bdf8;
       --button-text: #082f49;
     }
@@ -26,46 +26,46 @@
       color: #f9fafb;
       min-height: 100vh;
       background:
-        radial-gradient(circle at top left, var(--glow-one), transparent 34%),
-        radial-gradient(circle at bottom right, var(--glow-two), transparent 32%),
-        linear-gradient(180deg, var(--bg-start) 0%, var(--bg-end) 100%);
+        radial-gradient(circle at top left, var(--glow-one), transparent 38%),
+        radial-gradient(circle at bottom right, var(--glow-two), transparent 36%),
+        linear-gradient(160deg, var(--bg-start) 0%, var(--bg-end) 100%);
       padding: 18px;
     }
 
-    body.blue {
-      --bg-start: #020617;
-      --bg-end: #0f172a;
-      --glow-one: rgba(56, 189, 248, 0.22);
-      --glow-two: rgba(14, 165, 233, 0.13);
+    body.full-blue {
+      --bg-start: #0284c7;
+      --bg-end: #0ea5e9;
+      --glow-one: rgba(186, 230, 253, 0.42);
+      --glow-two: rgba(7, 89, 133, 0.35);
       --accent: #38bdf8;
       --button-text: #082f49;
     }
 
-    body.soft-rose {
-      --bg-start: #120817;
-      --bg-end: #1f1020;
-      --glow-one: rgba(244, 114, 182, 0.26);
-      --glow-two: rgba(219, 39, 119, 0.14);
-      --accent: #f472b6;
-      --button-text: #3b0824;
+    body.full-pink {
+      --bg-start: #db2777;
+      --bg-end: #f472b6;
+      --glow-one: rgba(252, 231, 243, 0.46);
+      --glow-two: rgba(131, 24, 67, 0.38);
+      --accent: #f9a8d4;
+      --button-text: #500724;
     }
 
-    body.strong-rose {
-      --bg-start: #170819;
-      --bg-end: #2a1025;
-      --glow-one: rgba(244, 114, 182, 0.34);
-      --glow-two: rgba(219, 39, 119, 0.22);
-      --accent: #f472b6;
-      --button-text: #3b0824;
+    body.hot-pink {
+      --bg-start: #be185d;
+      --bg-end: #ec4899;
+      --glow-one: rgba(253, 164, 175, 0.46);
+      --glow-two: rgba(80, 7, 36, 0.42);
+      --accent: #fbcfe8;
+      --button-text: #500724;
     }
 
-    body.purple-pink {
-      --bg-start: #10091b;
-      --bg-end: #21112c;
-      --glow-one: rgba(232, 121, 249, 0.28);
-      --glow-two: rgba(192, 38, 211, 0.16);
-      --accent: #e879f9;
-      --button-text: #3b063f;
+    body.electric-blue {
+      --bg-start: #0369a1;
+      --bg-end: #38bdf8;
+      --glow-one: rgba(224, 242, 254, 0.55);
+      --glow-two: rgba(12, 74, 110, 0.42);
+      --accent: #bae6fd;
+      --button-text: #082f49;
     }
 
     .app-shell {
@@ -85,27 +85,28 @@
     }
 
     .theme-button {
-      border: 1px solid rgba(255,255,255,0.16);
-      background: rgba(15, 23, 42, 0.72);
+      border: 1px solid rgba(255,255,255,0.28);
+      background: rgba(15, 23, 42, 0.68);
       color: #f9fafb;
       border-radius: 14px;
       padding: 11px 12px;
-      font-weight: 800;
+      font-weight: 900;
+      box-shadow: 0 10px 24px rgba(0,0,0,0.18);
     }
 
     .theme-button.active {
-      background: var(--accent);
-      color: var(--button-text);
+      background: rgba(255,255,255,0.92);
+      color: #111827;
       border-color: transparent;
     }
 
     .preview-card {
-      background: rgba(17, 24, 39, 0.88);
-      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(15, 23, 42, 0.76);
+      border: 1px solid rgba(255, 255, 255, 0.22);
       border-radius: 28px;
       padding: 22px;
-      box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35);
-      backdrop-filter: blur(10px);
+      box-shadow: 0 20px 55px rgba(0, 0, 0, 0.36);
+      backdrop-filter: blur(14px);
       margin-top: 12px;
     }
 
@@ -120,7 +121,7 @@
     }
 
     p {
-      color: #9ca3af;
+      color: #d1d5db;
       line-height: 1.5;
     }
 
@@ -141,11 +142,11 @@
     }
 
     .secondary-button {
-      border: 1px solid rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.22);
       border-radius: 14px;
       padding: 12px 16px;
       font-weight: 900;
-      background: rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.14);
       color: #f9fafb;
     }
 
@@ -158,7 +159,7 @@
 
     .stat {
       background: rgba(15, 23, 42, 0.72);
-      border: 1px solid rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.18);
       border-radius: 18px;
       padding: 14px;
     }
@@ -172,7 +173,7 @@
     }
 
     .stat-label {
-      color: #9ca3af;
+      color: #d1d5db;
       font-size: 0.85rem;
       font-weight: 700;
     }
@@ -184,7 +185,7 @@
     }
 
     .sample-item {
-      border: 1px solid rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.18);
       background: rgba(15, 23, 42, 0.72);
       border-radius: 18px;
       padding: 14px;
@@ -196,13 +197,13 @@
     }
 
     .sample-item span {
-      color: #9ca3af;
+      color: #d1d5db;
     }
 
     .hex {
       margin-top: 16px;
       font-family: monospace;
-      color: #d1d5db;
+      color: #e5e7eb;
       font-size: 0.9rem;
       line-height: 1.5;
     }
@@ -219,21 +220,21 @@
   </style>
 </head>
 
-<body class="blue">
+<body class="full-blue">
 
   <div class="app-shell">
 
     <div class="theme-buttons">
-      <button class="theme-button active" data-theme="blue">Scott Blue</button>
-      <button class="theme-button" data-theme="soft-rose">Soft Rose</button>
-      <button class="theme-button" data-theme="strong-rose">Stronger Rose</button>
-      <button class="theme-button" data-theme="purple-pink">Purple Pink</button>
+      <button class="theme-button active" data-theme="full-blue">Full Blue</button>
+      <button class="theme-button" data-theme="electric-blue">Electric Blue</button>
+      <button class="theme-button" data-theme="full-pink">Full Pink</button>
+      <button class="theme-button" data-theme="hot-pink">Hot Pink</button>
     </div>
 
     <div class="preview-card">
       <h1>GymPilot</h1>
-      <h2 id="themeTitle">Scott — Blue Theme</h2>
-      <p id="themeDescription">Dark navy background with blue glow and blue accent buttons.</p>
+      <h2 id="themeTitle">Scott — Full Blue</h2>
+      <p id="themeDescription">A proper blue background, not just blue highlights.</p>
 
       <div class="button-row">
         <button class="main-button">Start workout</button>
@@ -275,7 +276,7 @@
       </div>
 
       <div class="hex" id="themeHex">
-        Background: #020617 → #0f172a<br />
+        Background: #0284c7 → #0ea5e9<br />
         Accent: #38bdf8
       </div>
     </div>
@@ -284,25 +285,25 @@
 
   <script>
     const themes = {
-      "blue": {
-        title: "Scott — Blue Theme",
-        description: "Dark navy background with blue glow and blue accent buttons.",
-        hex: "Background: #020617 → #0f172a<br />Accent: #38bdf8"
+      "full-blue": {
+        title: "Scott — Full Blue",
+        description: "A proper blue background, not just blue highlights.",
+        hex: "Background: #0284c7 → #0ea5e9<br />Accent: #38bdf8"
       },
-      "soft-rose": {
-        title: "Laurie — Soft Rose Theme",
-        description: "Dark plum background with soft rose glow and rose accent buttons.",
-        hex: "Background: #120817 → #1f1020<br />Accent: #f472b6"
+      "electric-blue": {
+        title: "Scott — Electric Blue",
+        description: "A brighter, punchier blue background. More gym-app energy.",
+        hex: "Background: #0369a1 → #38bdf8<br />Accent: #bae6fd"
       },
-      "strong-rose": {
-        title: "Laurie — Stronger Rose Theme",
-        description: "A richer pink/plum background. Still dark and readable, but more obviously pink.",
-        hex: "Background: #170819 → #2a1025<br />Accent: #f472b6"
+      "full-pink": {
+        title: "Laurie — Full Pink",
+        description: "A proper pink background with soft rose energy.",
+        hex: "Background: #db2777 → #f472b6<br />Accent: #f9a8d4"
       },
-      "purple-pink": {
-        title: "Purple Pink Theme",
-        description: "A more purple/magenta version if Soft Rose feels too gentle.",
-        hex: "Background: #10091b → #21112c<br />Accent: #e879f9"
+      "hot-pink": {
+        title: "Laurie — Hot Pink",
+        description: "More vivid pink. Louder, stronger, definitely not shy.",
+        hex: "Background: #be185d → #ec4899<br />Accent: #fbcfe8"
       }
     };
 
