@@ -35,7 +35,7 @@ const defaultData = {
 
 let gymPilotData = loadData();
 let currentRoutineExercises = [];
-let activeWorkout = loadActiveWorkout();
+let activeWorkout = null;
 
 document.addEventListener("DOMContentLoaded", () => {
   setupTabs();
@@ -1204,9 +1204,8 @@ function updateWorkoutSet(workoutExerciseId, setId, field, value) {
         };
       })
     };
-   });
+  });
 
-  saveActiveWorkout();
   renderWorkoutMode();
 }
 
