@@ -1207,7 +1207,8 @@ function clearActiveWorkout() {
     return;
   }
 
-  activeWorkout = null;
+   activeWorkout = null;
+  clearSavedActiveWorkout();
   renderWorkoutMode();
 }
 
@@ -1242,7 +1243,8 @@ function saveCompletedWorkout() {
     gymPilotData.personalBests.unshift(...newPersonalBests);
   }
 
-  activeWorkout = null;
+    activeWorkout = null;
+  clearSavedActiveWorkout();
 
   saveData();
   renderDashboard();
