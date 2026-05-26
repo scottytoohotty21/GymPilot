@@ -1,4 +1,5 @@
 const STORAGE_KEY = "gympilot-data-v1";
+const ACTIVE_WORKOUT_STORAGE_KEY = "gympilot-active-workout-v1";
 
 const defaultData = {
   appName: "GymPilot",
@@ -34,7 +35,7 @@ const defaultData = {
 
 let gymPilotData = loadData();
 let currentRoutineExercises = [];
-let activeWorkout = null;
+let activeWorkout = loadActiveWorkout();
 
 document.addEventListener("DOMContentLoaded", () => {
   setupTabs();
@@ -140,6 +141,38 @@ function setupDashboardJumpButtons() {
   });
 }
 
+/* ---------------------------
+   Active Workout Auto-save
+---------------------------- */
+
+function loadActiveWorkout() {
+  const savedWorkout = localStorage.getItem(ACTIVE_WORKOUT_STORAGE_KEY);
+
+  if (!savedWorkout) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(savedWorkout);
+  } catch (error) {
+    console.error("Could not load active workout:", error);
+    localStorage.removeItem(ACTIVE_WORKOUT_STORAGE_KEY);
+    return null;
+  }
+}
+
+function saveActiveWorkout() {
+  if (!activeWorkout) {
+    localStorage.removeItem(ACTIVE_WORKOUT_STORAGE_KEY);
+    return;
+  }
+
+  localStorage.setItem(ACTIVE_WORKOUT_STORAGE_KEY, JSON.stringify(activeWorkout));
+}
+
+function clearSavedActiveWorkout() {
+  localStorage.removeItem(ACTIVE_WORKOUT_STORAGE_KEY);
+}
 /* ---------------------------
    Settings / Profiles / Themes
 ---------------------------- */
@@ -1054,29 +1087,45 @@ function startWorkout() {
     })
   };
 
+    saveActiveWorkout();
   renderWorkoutMode();
+}
 }
 
 function renderWorkoutMode() {
   const title = document.getElementById("activeWorkoutTitle");
-  const summary = document.getElementById("activeWorkoutSummary");
-  const list = document.getElementById("activeWorkoutList");
-  const saveButton = document.getElementById("saveWorkoutButton");
+const summary = document.getElementById("activeWorkoutSummary");
+const notice = document.getElementById("activeWorkoutNotice");
+const list = document.getElementById("activeWorkoutList");
+const saveButton = document.getElementById("saveWorkoutButton");
 
   if (!title || !summary || !list || !saveButton) {
     return;
   }
 
   if (!activeWorkout) {
-    title.textContent = "No active workout";
-    summary.textContent = "Choose a routine above to begin.";
-    list.innerHTML = "";
-    saveButton.classList.remove("visible");
-    return;
+  title.textContent = "No active workout";
+  summary.textContent = "Choose a routine above to begin.";
+
+  if (notice) {
+    notice.classList.add("hidden");
+    notice.innerHTML = "";
   }
+
+  list.innerHTML = "";
+  saveButton.classList.remove("visible");
+  return;
+}
 
   title.textContent = activeWorkout.routineName;
   summary.textContent = `Training as ${profileLabel(activeWorkout.profile)} • Workout date: ${formatDate(activeWorkout.date)}`;
+  if (notice) {
+  notice.classList.remove("hidden");
+  notice.innerHTML = `
+    <strong>Auto-save active</strong>
+    This workout is being saved as you go. If the page refreshes, GymPilot will restore it.
+  `;
+}
   saveButton.classList.add("visible");
 
   list.innerHTML = activeWorkout.exercises.map((exercise) => {
@@ -1155,7 +1204,10 @@ function updateWorkoutSet(workoutExerciseId, setId, field, value) {
         };
       })
     };
-  });
+   });
+
+  saveActiveWorkout();
+  renderWorkoutMode();
 }
 
 function clearActiveWorkout() {
@@ -1170,7 +1222,8 @@ function clearActiveWorkout() {
     return;
   }
 
-  activeWorkout = null;
+    activeWorkout = null;
+  clearSavedActiveWorkout();
   renderWorkoutMode();
 }
 
@@ -1205,7 +1258,8 @@ function saveCompletedWorkout() {
     gymPilotData.personalBests.unshift(...newPersonalBests);
   }
 
-  activeWorkout = null;
+    activeWorkout = null;
+  clearSavedActiveWorkout();
 
   saveData();
   renderDashboard();
