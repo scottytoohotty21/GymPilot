@@ -33,10 +33,12 @@ body {
   margin: 0;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   background:
-    radial-gradient(circle at top left, var(--bg-glow), transparent 30%),
-    linear-gradient(180deg, #020617 0%, var(--bg) 100%);
+    radial-gradient(circle at top left, var(--bg-glow-one), transparent 38%),
+    radial-gradient(circle at bottom right, var(--bg-glow-two), transparent 36%),
+    linear-gradient(160deg, var(--bg-start) 0%, var(--bg-end) 100%);
   color: var(--text);
   min-height: 100vh;
+  background-attachment: fixed;
 }
 
 button,
@@ -76,9 +78,9 @@ button {
 }
 
 .status-pill {
-  background: rgba(56, 189, 248, 0.14);
-  color: #bae6fd;
-  border: 1px solid rgba(56, 189, 248, 0.35);
+  background: var(--accent-soft);
+  color: #ffffff;
+  border: 1px solid var(--accent-border);
   padding: 8px 12px;
   border-radius: 999px;
   font-size: 0.85rem;
@@ -92,9 +94,10 @@ button {
   padding: 8px;
   margin-bottom: 16px;
   border: 1px solid var(--border);
-  background: rgba(15, 23, 42, 0.72);
+  background: rgba(15, 23, 42, 0.68);
   border-radius: 18px;
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22);
 }
 
 .tab-button {
@@ -108,7 +111,7 @@ button {
 
 .tab-button.active {
   background: var(--accent);
-  color: #082f49;
+  color: var(--button-text);
   font-weight: 800;
 }
 
@@ -121,12 +124,13 @@ button {
 }
 
 .card {
-  background: linear-gradient(180deg, rgba(31, 41, 55, 0.96), rgba(17, 24, 39, 0.96));
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.82), rgba(15, 23, 42, 0.74));
   border: 1px solid var(--border);
   border-radius: 22px;
   padding: 18px;
   box-shadow: var(--shadow);
   margin-bottom: 14px;
+  backdrop-filter: blur(14px);
 }
 
 .card h2,
@@ -156,11 +160,11 @@ button {
   align-self: flex-start;
   border: 0;
   background: var(--accent);
-  color: #082f49;
+  color: var(--button-text);
   padding: 12px 16px;
   border-radius: 14px;
   font-weight: 800;
-  box-shadow: 0 10px 25px rgba(56, 189, 248, 0.22);
+  box-shadow: 0 10px 25px var(--accent-soft);
 }
 
 .primary-button:active {
@@ -267,9 +271,9 @@ textarea {
 }
 
 .small-button {
-  background: rgba(56, 189, 248, 0.14);
-  color: #bae6fd;
-  border: 1px solid rgba(56, 189, 248, 0.35);
+  background: var(--accent-soft);
+  color: #ffffff;
+  border: 1px solid var(--accent-border);
   padding: 8px 10px;
   font-size: 0.85rem;
 }
@@ -527,9 +531,9 @@ textarea {
 }
 
 .summary-strip {
-  border: 1px solid var(--border);
-  background: rgba(56, 189, 248, 0.1);
-  color: #bae6fd;
+  border: 1px solid var(--accent-border);
+  background: var(--accent-soft);
+  color: #ffffff;
   border-radius: 16px;
   padding: 12px;
   margin-bottom: 14px;
@@ -745,25 +749,31 @@ textarea {
   }
 }
 body.theme-blue {
-  --bg: #0f172a;
-  --bg-glow: rgba(56, 189, 248, 0.18);
+  --bg-start: #0284c7;
+  --bg-end: #0ea5e9;
+  --bg-glow-one: rgba(186, 230, 253, 0.42);
+  --bg-glow-two: rgba(7, 89, 133, 0.35);
+
   --accent: #38bdf8;
   --accent-strong: #0284c7;
+  --accent-soft: rgba(56, 189, 248, 0.18);
+  --accent-border: rgba(56, 189, 248, 0.44);
+
+  --button-text: #082f49;
 }
 
 body.theme-pink {
-  --bg: #1f1020;
-  --bg-glow: rgba(244, 114, 182, 0.22);
-  --accent: #f472b6;
-  --accent-strong: #db2777;
-}
+  --bg-start: #db2777;
+  --bg-end: #f472b6;
+  --bg-glow-one: rgba(252, 231, 243, 0.46);
+  --bg-glow-two: rgba(131, 24, 67, 0.38);
 
-body.theme-pink .status-pill,
-body.theme-pink .summary-strip,
-body.theme-pink .small-button {
-  background: rgba(244, 114, 182, 0.14);
-  color: #fce7f3;
-  border-color: rgba(244, 114, 182, 0.35);
+  --accent: #f9a8d4;
+  --accent-strong: #db2777;
+  --accent-soft: rgba(249, 168, 212, 0.18);
+  --accent-border: rgba(249, 168, 212, 0.46);
+
+  --button-text: #500724;
 }
 
 .settings-profile-card {
