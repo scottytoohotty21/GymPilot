@@ -1087,6 +1087,7 @@ function startWorkout() {
     })
   };
 
+    saveActiveWorkout();
   renderWorkoutMode();
 }
 
