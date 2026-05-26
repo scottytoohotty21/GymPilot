@@ -841,3 +841,21 @@ body.theme-pink {
     grid-template-columns: 1fr;
   }
 }
+.active-workout-notice {
+  border: 1px solid var(--accent-border);
+  background: var(--accent-soft);
+  color: #ffffff;
+  border-radius: 16px;
+  padding: 12px;
+  margin-bottom: 14px;
+  line-height: 1.45;
+}
+
+.active-workout-notice strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.hidden {
+  display: none !important;
+}
