@@ -6,6 +6,16 @@ const defaultData = {
   exercises: [],
   completedWorkouts: [],
   personalBests: [],
+  nutrition: {
+    foods: [],
+    meals: [],
+    dailyLogs: []
+  },
+  progress: {
+    checkIns: [],
+    measurements: [],
+    photos: []
+  },
   settings: {
   activeProfile: "Scott",
   accountabilityPartner: "Laurie",
@@ -66,7 +76,15 @@ function loadData() {
       exercises: parsedData.exercises || [],
       completedWorkouts: parsedData.completedWorkouts || [],
       personalBests: parsedData.personalBests || [],
-      settings: {
+nutrition: {
+  ...structuredClone(defaultData.nutrition),
+  ...(parsedData.nutrition || {})
+},
+progress: {
+  ...structuredClone(defaultData.progress),
+  ...(parsedData.progress || {})
+},
+settings: {
   ...defaultData.settings,
   ...(parsedData.settings || {}),
   profiles: getMergedProfiles(parsedData.settings?.profiles)
