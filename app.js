@@ -35,7 +35,7 @@ const defaultData = {
 
 let gymPilotData = loadData();
 let currentRoutineExercises = [];
-let activeWorkout = null;
+let activeWorkout = loadActiveWorkout();
 
 document.addEventListener("DOMContentLoaded", () => {
   setupTabs();
