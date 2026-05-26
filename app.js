@@ -1,4 +1,5 @@
 const STORAGE_KEY = "gympilot-data-v1";
+const ACTIVE_WORKOUT_STORAGE_KEY = "gympilot-active-workout-v1";
 
 const defaultData = {
   appName: "GymPilot",
@@ -140,6 +141,38 @@ function setupDashboardJumpButtons() {
   });
 }
 
+/* ---------------------------
+   Active Workout Auto-save
+---------------------------- */
+
+function loadActiveWorkout() {
+  const savedWorkout = localStorage.getItem(ACTIVE_WORKOUT_STORAGE_KEY);
+
+  if (!savedWorkout) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(savedWorkout);
+  } catch (error) {
+    console.error("Could not load active workout:", error);
+    localStorage.removeItem(ACTIVE_WORKOUT_STORAGE_KEY);
+    return null;
+  }
+}
+
+function saveActiveWorkout() {
+  if (!activeWorkout) {
+    localStorage.removeItem(ACTIVE_WORKOUT_STORAGE_KEY);
+    return;
+  }
+
+  localStorage.setItem(ACTIVE_WORKOUT_STORAGE_KEY, JSON.stringify(activeWorkout));
+}
+
+function clearSavedActiveWorkout() {
+  localStorage.removeItem(ACTIVE_WORKOUT_STORAGE_KEY);
+}
 /* ---------------------------
    Settings / Profiles / Themes
 ---------------------------- */
