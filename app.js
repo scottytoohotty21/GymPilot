@@ -1190,6 +1190,9 @@ function updateWorkoutSet(workoutExerciseId, setId, field, value) {
       })
     };
   });
+
+  saveActiveWorkout();
+  renderWorkoutMode();
 }
 
 function clearActiveWorkout() {
