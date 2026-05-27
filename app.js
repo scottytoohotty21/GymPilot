@@ -394,7 +394,8 @@ function saveExerciseFromForm() {
     defaultSets: numberOrEmpty(document.getElementById("exerciseSets").value),
     defaultReps: numberOrEmpty(document.getElementById("exerciseReps").value),
     defaultWeight: document.getElementById("exerciseWeight").value.trim(),
-    notes: document.getElementById("exerciseNotes").value.trim(),
+defaultUnit: document.getElementById("exerciseUnit").value,
+notes: document.getElementById("exerciseNotes").value.trim(),
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
@@ -468,9 +469,9 @@ function renderExerciseLibrary() {
       stats.push(`${exercise.defaultReps} reps`);
     }
 
-    if (exercise.defaultWeight) {
-      stats.push(`${escapeHTML(exercise.defaultWeight)}`);
-    }
+   if (exercise.defaultWeight) {
+  stats.push(`${escapeHTML(formatLoadWithUnit(exercise.defaultWeight, exercise.defaultUnit))}`);
+}
 
     const statChips = stats.map((stat) => {
       return `<span class="stat-chip">${stat}</span>`;
@@ -520,6 +521,7 @@ function editExercise(exerciseId) {
   document.getElementById("exerciseSets").value = exercise.defaultSets ?? "";
   document.getElementById("exerciseReps").value = exercise.defaultReps ?? "";
   document.getElementById("exerciseWeight").value = exercise.defaultWeight || "";
+  document.getElementById("exerciseUnit").value = exercise.defaultUnit || "kg";
   document.getElementById("exerciseNotes").value = exercise.notes || "";
 
   const saveButton = document.getElementById("saveExerciseButton");
@@ -1650,6 +1652,25 @@ function numberOrEmpty(value) {
   return Number(value);
 }
 
+function formatLoadWithUnit(load, unit) {
+  if (!load && unit === "bodyweight") {
+    return "bodyweight";
+  }
+
+  if (!load) {
+    return "";
+  }
+
+  if (!unit) {
+    return load;
+  }
+
+  if (unit === "bodyweight") {
+    return "bodyweight";
+  }
+
+  return `${load} ${unit}`;
+}
 function extractFirstNumber(value) {
   if (value === "" || value === null || value === undefined) {
     return null;
