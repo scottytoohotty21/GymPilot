@@ -860,3 +860,38 @@
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     display: none !important;
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     }
 }
+.history-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.share-button {
+  border: 0;
+  padding: 11px 14px;
+  border-radius: 14px;
+  font-weight: 800;
+  background: var(--accent);
+  color: var(--button-text);
+  box-shadow: 0 10px 25px var(--accent-soft);
+}
+
+.copy-button {
+  border: 1px solid var(--border);
+  padding: 11px 14px;
+  border-radius: 14px;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+}
+
+@media (max-width: 480px) {
+  .history-actions {
+    flex-direction: column;
+  }
+
+  .history-actions button {
+    width: 100%;
+  }
+}
