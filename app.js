@@ -1329,8 +1329,18 @@ function renderHistory() {
         <h4>${escapeHTML(workout.routineName)}</h4>
         <div class="history-date">${profileLabel(workout.profile)} • ${formatDate(workout.date)}</div>
 
-        <div class="history-exercise-list">
+                <div class="history-exercise-list">
           ${exerciseRows}
+        </div>
+
+        <div class="history-actions">
+          <button class="copy-button" type="button" onclick="copyWorkoutSummary('${workout.id}')">
+            Copy summary
+          </button>
+
+          <button class="share-button" type="button" onclick="shareWorkoutSummary('${workout.id}')">
+            Share
+          </button>
         </div>
       </article>
     `;
@@ -1509,6 +1519,113 @@ function renderPersonalBests() {
   }).join("");
 }
 
+/* ---------------------------
+   Workout Sharing
+---------------------------- */
+
+function getWorkoutById(workoutId) {
+  return (gymPilotData.completedWorkouts || []).find((workout) => workout.id === workoutId);
+}
+
+function getWorkoutPersonalBests(workoutId) {
+  return (gymPilotData.personalBests || []).filter((pb) => pb.workoutId === workoutId);
+}
+
+function buildWorkoutSummary(workoutId) {
+  const workout = getWorkoutById(workoutId);
+
+  if (!workout) {
+    return "Workout not found.";
+  }
+
+  const lines = [];
+
+  lines.push("GymPilot Workout");
+  lines.push("");
+  lines.push(`${profileLabel(workout.profile)} completed ${workout.routineName}`);
+  lines.push(`Date: ${formatDate(workout.date)}`);
+  lines.push("");
+
+  workout.exercises.forEach((exercise) => {
+    lines.push(exercise.name);
+
+    const completedSets = exercise.sets.filter((set) => set.completed);
+
+    if (completedSets.length === 0) {
+      lines.push("No completed sets ticked.");
+      lines.push("");
+      return;
+    }
+
+    completedSets.forEach((set) => {
+      const setParts = [];
+
+      if (set.actualReps !== "") {
+        setParts.push(`${set.actualReps} reps`);
+      }
+
+      if (set.actualWeight !== "") {
+        setParts.push(`${set.actualWeight}`);
+      }
+
+      lines.push(`Set ${set.setNumber}: ${setParts.length ? setParts.join(" • ") : "Completed"}`);
+    });
+
+    lines.push("");
+  });
+
+  const workoutPBs = getWorkoutPersonalBests(workoutId);
+
+  if (workoutPBs.length > 0) {
+    lines.push("PBs:");
+    workoutPBs.forEach((pb) => {
+      lines.push(`🎉 ${pb.exerciseName} — ${pb.label}: ${pb.displayValue}`);
+    });
+    lines.push("");
+  }
+
+  lines.push("Logged with GymPilot");
+
+  return lines.join("\n");
+}
+
+async function copyWorkoutSummary(workoutId) {
+  const summary = buildWorkoutSummary(workoutId);
+
+  try {
+    await navigator.clipboard.writeText(summary);
+    alert("Workout summary copied.");
+  } catch (error) {
+    console.error("Could not copy workout summary:", error);
+    alert(summary);
+  }
+}
+
+async function shareWorkoutSummary(workoutId) {
+  const summary = buildWorkoutSummary(workoutId);
+  const workout = getWorkoutById(workoutId);
+
+  if (!workout) {
+    alert("Workout not found.");
+    return;
+  }
+
+  const shareData = {
+    title: `GymPilot workout — ${workout.routineName}`,
+    text: summary
+  };
+
+  if (navigator.share) {
+    try {
+      await navigator.share(shareData);
+      return;
+    } catch (error) {
+      console.error("Share cancelled or failed:", error);
+    }
+  }
+
+  await copyWorkoutSummary(workoutId);
+}
 /* ---------------------------
    Shared helpers
 ---------------------------- */
