@@ -895,3 +895,11 @@
     width: 100%;
   }
 }
+#moodboard .feature-roadmap-card {
+  min-height: 150px;
+}
+
+#moodboard .data-preview-item strong::before {
+  content: "✦ ";
+  color: var(--accent);
+}
