@@ -675,7 +675,8 @@ function addExerciseToRoutineDraft() {
     muscleGroup: exercise.muscleGroup || "",
     plannedSets: numberOrEmpty(document.getElementById("routineExerciseSets").value) || exercise.defaultSets || "",
     plannedReps: numberOrEmpty(document.getElementById("routineExerciseReps").value) || exercise.defaultReps || "",
-    plannedWeight: document.getElementById("routineExerciseWeight").value.trim() || exercise.defaultWeight || ""
+    plannedWeight: document.getElementById("routineExerciseWeight").value.trim() || exercise.defaultWeight || "",
+plannedUnit: document.getElementById("routineExerciseUnit").value || exercise.defaultUnit || "kg"
   };
 
   currentRoutineExercises.push(routineExercise);
@@ -684,6 +685,7 @@ function addExerciseToRoutineDraft() {
   document.getElementById("routineExerciseSets").value = "";
   document.getElementById("routineExerciseReps").value = "";
   document.getElementById("routineExerciseWeight").value = "";
+  document.getElementById("routineExerciseUnit").value = "kg";
 
   renderRoutineDraftList();
 }
@@ -715,9 +717,9 @@ function renderRoutineDraftList() {
       detailParts.push(`${item.plannedReps} reps`);
     }
 
-    if (item.plannedWeight) {
-      detailParts.push(`${escapeHTML(item.plannedWeight)}`);
-    }
+   if (item.plannedWeight || item.plannedUnit === "bodyweight") {
+  detailParts.push(`${escapeHTML(formatLoadWithUnit(item.plannedWeight, item.plannedUnit))}`);
+}
 
     return `
       <div class="routine-draft-item">
@@ -756,8 +758,9 @@ function saveRoutineFromForm() {
       type: item.type || "",
       muscleGroup: item.muscleGroup || "",
       plannedSets: item.plannedSets,
-      plannedReps: item.plannedReps,
-      plannedWeight: item.plannedWeight
+plannedReps: item.plannedReps,
+plannedWeight: item.plannedWeight,
+plannedUnit: item.plannedUnit || "kg"
     })),
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
@@ -840,9 +843,9 @@ function renderRoutineBuilder() {
         detailParts.push(`${item.plannedReps} reps`);
       }
 
-      if (item.plannedWeight) {
-        detailParts.push(`${escapeHTML(item.plannedWeight)}`);
-      }
+      if (item.plannedWeight || item.plannedUnit === "bodyweight") {
+  detailParts.push(`${escapeHTML(formatLoadWithUnit(item.plannedWeight, item.plannedUnit))}`);
+}
 
       return `
         <div class="routine-exercise-row">
@@ -898,16 +901,17 @@ function editRoutine(routineId) {
   document.getElementById("routineNotes").value = routine.notes || "";
 
   currentRoutineExercises = (routine.exercises || []).map((item) => ({
-    draftId: crypto.randomUUID(),
-    routineExerciseId: item.routineExerciseId || crypto.randomUUID(),
-    exerciseId: item.exerciseId,
-    name: item.name,
-    type: item.type || "",
-    muscleGroup: item.muscleGroup || "",
-    plannedSets: item.plannedSets,
-    plannedReps: item.plannedReps,
-    plannedWeight: item.plannedWeight
-  }));
+  draftId: crypto.randomUUID(),
+  routineExerciseId: item.routineExerciseId || crypto.randomUUID(),
+  exerciseId: item.exerciseId,
+  name: item.name,
+  type: item.type || "",
+  muscleGroup: item.muscleGroup || "",
+  plannedSets: item.plannedSets,
+  plannedReps: item.plannedReps,
+  plannedWeight: item.plannedWeight,
+  plannedUnit: item.plannedUnit || "kg"
+}));
 
   const saveButton = document.getElementById("saveRoutineButton");
   const cancelButton = document.getElementById("cancelEditRoutineButton");
