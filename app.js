@@ -1080,15 +1080,17 @@ function startWorkout() {
         type: exercise.type || "",
         muscleGroup: exercise.muscleGroup || "",
         plannedSets: exercise.plannedSets,
-        plannedReps: exercise.plannedReps,
-        plannedWeight: exercise.plannedWeight,
-        sets: Array.from({ length: setCount }, (_, index) => ({
-          setId: crypto.randomUUID(),
-          setNumber: index + 1,
-          completed: false,
-          actualReps: exercise.plannedReps || "",
-          actualWeight: exercise.plannedWeight || ""
-        }))
+plannedReps: exercise.plannedReps,
+plannedWeight: exercise.plannedWeight,
+plannedUnit: exercise.plannedUnit || "kg",
+sets: Array.from({ length: setCount }, (_, index) => ({
+  setId: crypto.randomUUID(),
+  setNumber: index + 1,
+  completed: false,
+  actualReps: exercise.plannedReps || "",
+  actualWeight: exercise.plannedWeight || "",
+  actualUnit: exercise.plannedUnit || "kg"
+}))
       };
     })
   };
@@ -1161,7 +1163,7 @@ function renderWorkoutMode() {
         <div class="routine-exercise-detail">
           Planned: ${exercise.plannedSets || "?"} sets
           ${exercise.plannedReps ? ` • ${escapeHTML(exercise.plannedReps)} reps` : ""}
-          ${exercise.plannedWeight ? ` • ${escapeHTML(exercise.plannedWeight)}` : ""}
+          ${exercise.plannedWeight || exercise.plannedUnit === "bodyweight" ? ` • ${escapeHTML(formatLoadWithUnit(exercise.plannedWeight, exercise.plannedUnit))}` : ""}
         </div>
 
         <div class="workout-set-list">
@@ -1314,9 +1316,9 @@ function renderHistory() {
             parts.push(`${escapeHTML(set.actualReps)} reps`);
           }
 
-          if (set.actualWeight !== "") {
-            parts.push(`${escapeHTML(set.actualWeight)}`);
-          }
+          if (set.actualWeight !== "" || set.actualUnit === "bodyweight") {
+  parts.push(`${escapeHTML(formatLoadWithUnit(set.actualWeight, set.actualUnit))}`);
+}
 
           return `<div class="completed-set">Set ${set.setNumber}: ${parts.length ? parts.join(" • ") : "Completed"}</div>`;
         })
@@ -1391,7 +1393,7 @@ function checkForPersonalBests(workout) {
           type: "maxWeight",
           label: "Heaviest weight / resistance",
           value: maxWeight,
-          displayValue: `${maxWeight}`
+          displayValue: formatLoadWithUnit(maxWeight, getExerciseWorkoutUnit(exercise))
         }));
       }
     }
@@ -1570,9 +1572,9 @@ function buildWorkoutSummary(workoutId) {
         setParts.push(`${set.actualReps} reps`);
       }
 
-      if (set.actualWeight !== "") {
-        setParts.push(`${set.actualWeight}`);
-      }
+      if (set.actualWeight !== "" || set.actualUnit === "bodyweight") {
+  setParts.push(formatLoadWithUnit(set.actualWeight, set.actualUnit));
+}
 
       lines.push(`Set ${set.setNumber}: ${setParts.length ? setParts.join(" • ") : "Completed"}`);
     });
@@ -1656,6 +1658,15 @@ function numberOrEmpty(value) {
   return Number(value);
 }
 
+function getExerciseWorkoutUnit(exercise) {
+  const firstSetWithUnit = (exercise.sets || []).find((set) => set.actualUnit);
+
+  if (firstSetWithUnit) {
+    return firstSetWithUnit.actualUnit;
+  }
+
+  return exercise.plannedUnit || "kg";
+}
 function formatLoadWithUnit(load, unit) {
   if (!load && unit === "bodyweight") {
     return "bodyweight";
