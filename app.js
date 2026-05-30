@@ -1384,7 +1384,7 @@ function checkForPersonalBests(workout) {
     const completedSetCount = completedSets.length;
 
     if (Number.isFinite(maxWeight)) {
-      const currentBestWeight = getCurrentBestValue(exercise.exerciseId, "maxWeight", workout.profile);
+      const currentBestWeight = getCurrentBestValue(exercise.exerciseId, "maxWeight", workout.profile, getExerciseWorkoutUnit(exercise));
 
       if (currentBestWeight === null || maxWeight > currentBestWeight) {
         newPersonalBests.push(createPersonalBestRecord({
@@ -1399,7 +1399,7 @@ function checkForPersonalBests(workout) {
     }
 
     if (Number.isFinite(maxReps)) {
-      const currentBestReps = getCurrentBestValue(exercise.exerciseId, "maxReps", workout.profile);
+      const currentBestReps = getCurrentBestValue(exercise.exerciseId, "maxReps", workout.profile, getExerciseWorkoutUnit(exercise));
 
       if (currentBestReps === null || maxReps > currentBestReps) {
         newPersonalBests.push(createPersonalBestRecord({
@@ -1413,7 +1413,7 @@ function checkForPersonalBests(workout) {
       }
     }
 
-    const currentBestSets = getCurrentBestValue(exercise.exerciseId, "maxSets", workout.profile);
+    const currentBestSets = getCurrentBestValue(exercise.exerciseId, "maxSets", workout.profile, getExerciseWorkoutUnit(exercise));
 
     if (currentBestSets === null || completedSetCount > currentBestSets) {
       newPersonalBests.push(createPersonalBestRecord({
@@ -1434,6 +1434,7 @@ function createPersonalBestRecord({ exercise, workout, type, label, value, displ
   return {
     id: crypto.randomUUID(),
     profile: profileLabel(workout.profile),
+unit: getExerciseWorkoutUnit(exercise),
 exerciseId: exercise.exerciseId,
 exerciseName: exercise.name,
 routineId: workout.routineId,
@@ -1448,13 +1449,21 @@ routineId: workout.routineId,
   };
 }
 
-function getCurrentBestValue(exerciseId, type, profile) {
+function getCurrentBestValue(exerciseId, type, profile, unit) {
   const activeProfile = profileLabel(profile);
+  const activeUnit = unit || "kg";
 
   const matchingBest = (gymPilotData.personalBests || [])
     .filter((pb) => {
       const pbProfile = profileLabel(pb.profile);
-      return pb.exerciseId === exerciseId && pb.type === type && pbProfile === activeProfile;
+      const pbUnit = pb.unit || "kg";
+
+      return (
+        pb.exerciseId === exerciseId &&
+        pb.type === type &&
+        pbProfile === activeProfile &&
+        pbUnit === activeUnit
+      );
     })
     .sort((a, b) => Number(b.value) - Number(a.value))[0];
 
@@ -1512,7 +1521,7 @@ function renderPersonalBests() {
         <div class="pb-item-header">
           <div>
             <h4>${escapeHTML(pb.exerciseName)}</h4>
-            <div class="pb-type">${escapeHTML(pb.label)}</div>
+            <div class="pb-type">${escapeHTML(pb.label)}${pb.unit ? ` • ${escapeHTML(pb.unit)}` : ""}</div>
           </div>
 
           <span class="pb-badge">PB</span>
