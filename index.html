@@ -369,6 +369,9 @@
       <input type="date" id="statsStartDate" />
       <input type="date" id="statsEndDate" />
       <button onclick="renderStats(true)">Apply</button>
+      <button onclick="historyFilter = null; renderHistory(); renderStats();" class="copy-button">
+  Reset Filter
+</button>
     </div>
   </div>
 

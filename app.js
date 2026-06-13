@@ -36,6 +36,7 @@ const defaultData = {
 let gymPilotData = loadData();
 let currentRoutineExercises = [];
 let activeWorkout = loadActiveWorkout();
+let historyFilter = null;
 
 document.addEventListener("DOMContentLoaded", () => {
   setupTabs();
@@ -1285,7 +1286,19 @@ function renderHistory() {
     return;
   }
 
-  const workouts = gymPilotData.completedWorkouts || [];
+  let workouts = gymPilotData.completedWorkouts || [];
+
+if (historyFilter && historyFilter.type === "range") {
+  workouts = workouts.filter(w => {
+    const d = parseSafeDate(w.date);
+    if (!d) return false;
+
+    if (historyFilter.start && d < historyFilter.start) return false;
+    if (historyFilter.end && d > historyFilter.end) return false;
+
+    return true;
+  });
+}
 
   if (workouts.length === 0) {
     historySummary.textContent = "No workouts logged yet.";
@@ -1354,6 +1367,18 @@ function renderHistory() {
     `;
   }).join("");
   renderStats();
+}
+function renderHistoryFiltered(list) {
+  const container = document.getElementById("historyList");
+
+  if (!container) return;
+
+  container.innerHTML = list.map(workout => `
+    <article class="card">
+      <h3>${workout.routineName}</h3>
+      <p>${formatDate(workout.date)}</p>
+    </article>
+  `).join("");
 }
 
 /* ---------------------------
@@ -1644,6 +1669,47 @@ async function shareWorkoutSummary(workoutId) {
 
   await copyWorkoutSummary(workoutId);
 }
+function setHistoryFilter(type, value) {
+  const now = new Date();
+
+  if (type === "week") {
+    const start = new Date(now);
+    start.setDate(now.getDate() - 7);
+
+    historyFilter = { type: "range", start, end: now };
+  }
+
+  if (type === "month") {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    historyFilter = { type: "range", start, end: now };
+  }
+
+  if (type === "year") {
+    const start = new Date(now.getFullYear(), 0, 1);
+
+    historyFilter = { type: "range", start, end: now };
+  }
+
+  if (type === "monthName") {
+    const workouts = gymPilotData.completedWorkouts || [];
+
+    const filtered = workouts.filter(w => {
+      const d = parseSafeDate(w.date);
+      if (!d) return false;
+
+      const name = d.toLocaleString('default', { month: 'long', year: 'numeric' });
+      return name === value;
+    });
+
+    historyFilter = null;
+
+    renderHistoryFiltered(filtered);
+    return;
+  }
+
+  renderHistory();
+}
 /* ---------------------------
    Shared helpers
 ---------------------------- */
@@ -1696,7 +1762,8 @@ function groupByMonth(workouts) {
   const map = {};
 
   workouts.forEach(w => {
-    const d = new Date(w.date);
+    const d = parseSafeDate(w.date);
+    if (!d) return;
 
     const key = d.toLocaleString('default', {
       month: 'long',
@@ -1735,9 +1802,20 @@ function renderStats(useCustom = false) {
     }
   }
 
-  const week = workouts.filter(w => new Date(w.date) >= startOfWeek).length;
-  const month = workouts.filter(w => new Date(w.date) >= startOfMonth).length;
-  const year = workouts.filter(w => new Date(w.date) >= startOfYear).length;
+  const week = workouts.filter(w => {
+  const d = parseSafeDate(w.date);
+  return d && d >= startOfWeek;
+}).length;
+
+const month = workouts.filter(w => {
+  const d = parseSafeDate(w.date);
+  return d && d >= startOfMonth;
+}).length;
+
+const year = workouts.filter(w => {
+  const d = parseSafeDate(w.date);
+  return d && d >= startOfYear;
+}).length;
 
   const monthly = groupByMonth(workouts);
 
@@ -1746,28 +1824,43 @@ function renderStats(useCustom = false) {
   if (!container) return;
 
   container.innerHTML = `
-    <div class="data-preview-item">
-      <strong>This Week</strong>
-      <span>${week}</span>
-    </div>
+    <div class="data-preview-item" onclick="setHistoryFilter('week')">
+  <strong>This Week</strong>
+  <span>${week}</span>
+</div>
 
-    <div class="data-preview-item">
-      <strong>This Month</strong>
-      <span>${month}</span>
-    </div>
+    <div class="data-preview-item" onclick="setHistoryFilter('month')">
+  <strong>This Month</strong>
+  <span>${month}</span>
+</div>
 
-    <div class="data-preview-item">
-      <strong>This Year</strong>
-      <span>${year}</span>
-    </div>
+    <div class="data-preview-item" onclick="setHistoryFilter('year')">
+  <strong>This Year</strong>
+  <span>${year}</span>
+</div>
 
     ${Object.entries(monthly).map(([k, v]) => `
-      <div class="data-preview-item">
-        <strong>${k}</strong>
-        <span>${v}</span>
-      </div>
+      <div class="data-preview-item" onclick="setHistoryFilter('monthName', '${k}')">
+  <strong>${k}</strong>
+  <span>${v}</span>
+</div>
     `).join("")}
   `;
+}
+function parseSafeDate(dateStr) {
+  if (!dateStr) return null;
+
+  const iso = new Date(dateStr);
+  if (!isNaN(iso)) return iso;
+
+  const parts = dateStr.split("/");
+
+  if (parts.length === 3) {
+    const [dd, mm, yyyy] = parts;
+    return new Date(`${yyyy}-${mm}-${dd}`);
+  }
+
+  return null;
 }
 function formatLoadWithUnit(load, unit) {
   if (!load && unit === "bodyweight") {
