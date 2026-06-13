@@ -351,6 +351,28 @@
     <div class="section-heading">
       <div>
         <h2>Workout History</h2>
+        <div class="card">
+
+  <div class="section-heading">
+    <div>
+      <h3>Training Stats</h3>
+      <p>Sessions overview and trends</p>
+    </div>
+  </div>
+
+  <div id="statsSummary" class="data-preview-list"></div>
+
+  <div class="data-preview-item">
+    <strong>Custom range</strong>
+
+    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:8px;">
+      <input type="date" id="statsStartDate" />
+      <input type="date" id="statsEndDate" />
+      <button onclick="renderStats(true)">Apply</button>
+    </div>
+  </div>
+
+</div>
         <p>Review completed workouts and training notes.</p>
       </div>
     </div>

@@ -1353,6 +1353,7 @@ function renderHistory() {
       </article>
     `;
   }).join("");
+  renderStats();
 }
 
 /* ---------------------------
@@ -1675,6 +1676,98 @@ function getExerciseWorkoutUnit(exercise) {
   }
 
   return exercise.plannedUnit || "kg";
+}
+function parseWorkoutDate(dateStr) {
+  return new Date(dateStr);
+}
+function getFilteredWorkouts(startDate, endDate) {
+  const workouts = gymPilotData.completedWorkouts || [];
+
+  return workouts.filter(w => {
+    const d = new Date(w.date);
+
+    if (startDate && d < startDate) return false;
+    if (endDate && d > endDate) return false;
+
+    return true;
+  });
+}
+function groupByMonth(workouts) {
+  const map = {};
+
+  workouts.forEach(w => {
+    const d = new Date(w.date);
+
+    const key = d.toLocaleString('default', {
+      month: 'long',
+      year: 'numeric'
+    });
+
+    map[key] = (map[key] || 0) + 1;
+  });
+
+  return map;
+}
+function renderStats(useCustom = false) {
+  const workouts = gymPilotData.completedWorkouts || [];
+
+  const now = new Date();
+
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - 7);
+
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const startOfYear = new Date(now.getFullYear(), 0, 1);
+
+  let filtered = workouts;
+
+  if (useCustom) {
+    const start = document.getElementById("statsStartDate").value;
+    const end = document.getElementById("statsEndDate").value;
+
+    if (start) {
+      filtered = filtered.filter(w => new Date(w.date) >= new Date(start));
+    }
+
+    if (end) {
+      filtered = filtered.filter(w => new Date(w.date) <= new Date(end));
+    }
+  }
+
+  const week = workouts.filter(w => new Date(w.date) >= startOfWeek).length;
+  const month = workouts.filter(w => new Date(w.date) >= startOfMonth).length;
+  const year = workouts.filter(w => new Date(w.date) >= startOfYear).length;
+
+  const monthly = groupByMonth(workouts);
+
+  const container = document.getElementById("statsSummary");
+
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="data-preview-item">
+      <strong>This Week</strong>
+      <span>${week}</span>
+    </div>
+
+    <div class="data-preview-item">
+      <strong>This Month</strong>
+      <span>${month}</span>
+    </div>
+
+    <div class="data-preview-item">
+      <strong>This Year</strong>
+      <span>${year}</span>
+    </div>
+
+    ${Object.entries(monthly).map(([k, v]) => `
+      <div class="data-preview-item">
+        <strong>${k}</strong>
+        <span>${v}</span>
+      </div>
+    `).join("")}
+  `;
 }
 function formatLoadWithUnit(load, unit) {
   if (!load && unit === "bodyweight") {

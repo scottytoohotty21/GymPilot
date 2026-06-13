@@ -903,3 +903,13 @@
   content: "✦ ";
   color: var(--accent);
 }
+#statsSummary {
+  display: grid;
+  gap: 10px;
+}
+
+#statsSummary .data-preview-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
