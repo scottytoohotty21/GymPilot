@@ -1900,7 +1900,7 @@ let plannedWorkouts = []; // stores {date, routineId, profile, status}
 
 // --- Initialize Planner ---
 function initPlanner() {
-  // Ensure routines exist before populating sidebar
+  // Ensure routines exist
   if (!gymPilotData.routines || !gymPilotData.routines.length) {
     gymPilotData.routines = [
       { id: "r1", name: "Push Day", exercises: [] },
@@ -1911,35 +1911,39 @@ function initPlanner() {
     ];
   }
 
-  // Populate routine sidebar
+  // Populate sidebar
   const routineList = document.getElementById("routineList");
-  routineList.innerHTML = (gymPilotData.routines || []).map(r => 
-    `<li class="planned-routine" draggable="true" data-routine-id="${r.id}">${r.name}</li>`
-  ).join("");
+  if (routineList) {
+    routineList.innerHTML = gymPilotData.routines.map(r => 
+      `<li class="planned-routine" draggable="true" data-routine-id="${r.id}">${r.name}</li>`
+    ).join("");
 
-  // Add drag events for sidebar routines
-  document.querySelectorAll("#routineList .planned-routine").forEach(item => {
-    item.addEventListener("dragstart", ev => {
-      ev.dataTransfer.setData("text/plain", ev.target.dataset.routineId);
+    // Add dragstart events
+    document.querySelectorAll("#routineList .planned-routine").forEach(item => {
+      item.addEventListener("dragstart", ev => {
+        ev.dataTransfer.setData("text/plain", ev.target.dataset.routineId);
+      });
     });
-  });
+  }
 
-  // Build week calendar (7 days starting today)
+  // Build week calendar
   const calendarGrid = document.getElementById("calendarGrid");
-  const today = new Date();
+  if (!calendarGrid) return;
   calendarGrid.innerHTML = "";
 
-  const dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]; // easy weekday labels
+  const dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  const today = new Date();
 
   for (let i = 0; i < 7; i++) {
     const d = new Date();
     d.setDate(today.getDate() + i);
+
     const cell = document.createElement("div");
     cell.className = "calendar-cell";
     cell.dataset.date = d.toISOString().split("T")[0];
-    cell.textContent = `${dayNames[d.getDay()]} ${d.getDate()}`;
+    cell.textContent = `${dayNames[d.getDay()]} ${d.getDate()}`; // guaranteed visible
 
-    // Allow drop
+    // Drag & drop
     cell.addEventListener("dragover", ev => ev.preventDefault());
     cell.addEventListener("drop", ev => {
       ev.preventDefault();
