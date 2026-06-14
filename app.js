@@ -1369,6 +1369,7 @@ if (historyFilter && historyFilter.type === "range") {
     `;
   }).join("");
   renderStats();
+  initPlanner();
 }
 function renderHistoryFiltered(list) {
   const container = document.getElementById("historyList");
@@ -1879,6 +1880,107 @@ function renderMonthlyChart(workouts) {
     }
   });
 }
+// --- Planner Data ---
+let plannedWorkouts = []; // stores {date, routineId, profile, status}
+
+// --- Initialize Planner ---
+function initPlanner() {
+  // Populate routine sidebar
+  const routineList = document.getElementById("routineList");
+  routineList.innerHTML = (gymPilotData.routines || []).map(r => 
+    `<li class="planned-routine" draggable="true" data-routine-id="${r.id}">${r.name}</li>`
+  ).join("");
+
+  // Add drag events for routines
+  document.querySelectorAll("#routineList .planned-routine").forEach(item => {
+    item.addEventListener("dragstart", ev => {
+      ev.dataTransfer.setData("text/plain", ev.target.dataset.routineId);
+    });
+  });
+
+  // Build week calendar (7 days starting today)
+  const calendarGrid = document.getElementById("calendarGrid");
+  const today = new Date();
+  calendarGrid.innerHTML = "";
+  for (let i = 0; i < 7; i++) {
+    const d = new Date();
+    d.setDate(today.getDate() + i);
+    const cell = document.createElement("div");
+    cell.className = "calendar-cell";
+    cell.dataset.date = d.toISOString().split("T")[0];
+    cell.textContent = d.toLocaleDateString('default', { weekday:'short', day:'numeric' });
+
+    // Allow drop
+    cell.addEventListener("dragover", ev => ev.preventDefault());
+    cell.addEventListener("drop", ev => {
+      ev.preventDefault();
+      const routineId = ev.dataTransfer.getData("text/plain");
+      plannedWorkouts.push({date: cell.dataset.date, routineId, profile: "Scott", status:"planned"});
+      renderPlanner();
+    });
+
+    calendarGrid.appendChild(cell);
+  }
+
+  renderPlanner();
+}
+function renderPlanner() {
+  const calendarGrid = document.getElementById("calendarGrid");
+  if(!calendarGrid) return;
+
+  // Clear existing routines
+  calendarGrid.querySelectorAll(".planned-routine").forEach(r=>r.remove());
+
+  plannedWorkouts.forEach(pw => {
+    const cell = calendarGrid.querySelector(`.calendar-cell[data-date='${pw.date}']`);
+    if(!cell) return;
+    const routine = (gymPilotData.routines || []).find(r=>r.id===pw.routineId);
+    if(!routine) return;
+
+    const el = document.createElement("div");
+    el.className = "planned-routine";
+    el.textContent = routine.name;
+    el.draggable = true;
+
+    // Drag to reorder or move to another cell
+    el.addEventListener("dragstart", ev=>{
+      ev.dataTransfer.setData("text/plain", pw.routineId + "|" + pw.date);
+      // Remove from current array for simplicity
+      plannedWorkouts = plannedWorkouts.filter(x => !(x.date===pw.date && x.routineId===pw.routineId));
+    });
+
+    cell.appendChild(el);
+  });
+}
+document.addEventListener("click", ev => {
+  if(ev.target.classList.contains("planned-routine")) {
+    const cell = ev.target.parentElement;
+    const date = cell.dataset.date;
+    const routineName = ev.target.textContent;
+    const routine = (gymPilotData.routines || []).find(r => r.name === routineName);
+    if(!routine) return;
+
+    // Mark as completed
+    const index = plannedWorkouts.findIndex(x => x.date === date && x.routineId === routine.id);
+    if(index !== -1) {
+      plannedWorkouts[index].status = "completed";
+
+      // Push to History
+      const workoutDate = new Date(date);
+      gymPilotData.completedWorkouts.push({
+        date: workoutDate.toISOString(),
+        routineName: routine.name,
+        exercises: routine.exercises,
+        profile: "Scott"
+      });
+
+      // Refresh Planner, History, and Stats
+      renderPlanner();
+      renderHistory();
+      renderStats();
+    }
+  }
+});
 function renderWeeklyChart(workouts) {
   const ctx = document.getElementById("weeklyChart").getContext("2d");
 
