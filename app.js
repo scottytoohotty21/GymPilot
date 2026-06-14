@@ -1290,18 +1290,35 @@ function renderHistory() {
 
   let workouts = gymPilotData.completedWorkouts || [];
 
-if (historyFilter && historyFilter.type === "range") {
-  workouts = workouts.filter(w => {
-    const d = parseSafeDate(w.date);
-    if (!d) return false;
+  if (historyFilter && historyFilter.type === "range") {
+    workouts = workouts.filter(w => {
+      const d = parseSafeDate(w.date);
+      if (!d) return false;
 
-    if (historyFilter.start && d < historyFilter.start) return false;
-    if (historyFilter.end && d > historyFilter.end) return false;
+      if (historyFilter.start && d < historyFilter.start) return false;
+      if (historyFilter.end && d > historyFilter.end) return false;
 
-    return true;
-  });
-}
+      return true;
+    });
+  }
 
+  // Always render Stats and Planner, even if no workouts
+  renderStats();
+
+  // Ensure routines exist before initializing Planner
+  if (!gymPilotData.routines || !gymPilotData.routines.length) {
+    gymPilotData.routines = [
+      { id: "r1", name: "Push Day", exercises: [] },
+      { id: "r2", name: "Pull Day", exercises: [] },
+      { id: "r3", name: "Leg Day", exercises: [] },
+      { id: "r4", name: "Cardio", exercises: [] },
+      { id: "r5", name: "Full Body", exercises: [] }
+    ];
+  }
+
+  setTimeout(initPlanner, 0);
+
+  // Early return for empty workouts
   if (workouts.length === 0) {
     historySummary.textContent = "No workouts logged yet.";
     historyList.innerHTML = `
@@ -1332,8 +1349,8 @@ if (historyFilter && historyFilter.type === "range") {
           }
 
           if (set.actualWeight !== "" || set.actualUnit === "bodyweight") {
-  parts.push(`${escapeHTML(formatLoadWithUnit(set.actualWeight, set.actualUnit))}`);
-}
+            parts.push(`${escapeHTML(formatLoadWithUnit(set.actualWeight, set.actualUnit))}`);
+          }
 
           return `<div class="completed-set">Set ${set.setNumber}: ${parts.length ? parts.join(" • ") : "Completed"}</div>`;
         })
@@ -1352,7 +1369,7 @@ if (historyFilter && historyFilter.type === "range") {
         <h4>${escapeHTML(workout.routineName)}</h4>
         <div class="history-date">${profileLabel(workout.profile)} • ${formatDate(workout.date)}</div>
 
-                <div class="history-exercise-list">
+        <div class="history-exercise-list">
           ${exerciseRows}
         </div>
 
@@ -1368,17 +1385,6 @@ if (historyFilter && historyFilter.type === "range") {
       </article>
     `;
   }).join("");
-  renderStats();
-  if(!gymPilotData.routines || !gymPilotData.routines.length) {
-  gymPilotData.routines = [
-    { id: "r1", name: "Push Day", exercises: [] },
-    { id: "r2", name: "Pull Day", exercises: [] },
-    { id: "r3", name: "Leg Day", exercises: [] },
-    { id: "r4", name: "Cardio", exercises: [] },
-    { id: "r5", name: "Full Body", exercises: [] }
-  ];
-}
-  initPlanner();
 }
 function renderHistoryFiltered(list) {
   const container = document.getElementById("historyList");
