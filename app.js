@@ -1900,13 +1900,24 @@ let plannedWorkouts = []; // stores {date, routineId, profile, status}
 
 // --- Initialize Planner ---
 function initPlanner() {
+  // Ensure routines exist before populating sidebar
+  if (!gymPilotData.routines || !gymPilotData.routines.length) {
+    gymPilotData.routines = [
+      { id: "r1", name: "Push Day", exercises: [] },
+      { id: "r2", name: "Pull Day", exercises: [] },
+      { id: "r3", name: "Leg Day", exercises: [] },
+      { id: "r4", name: "Cardio", exercises: [] },
+      { id: "r5", name: "Full Body", exercises: [] }
+    ];
+  }
+
   // Populate routine sidebar
   const routineList = document.getElementById("routineList");
   routineList.innerHTML = (gymPilotData.routines || []).map(r => 
     `<li class="planned-routine" draggable="true" data-routine-id="${r.id}">${r.name}</li>`
   ).join("");
 
-  // Add drag events for routines
+  // Add drag events for sidebar routines
   document.querySelectorAll("#routineList .planned-routine").forEach(item => {
     item.addEventListener("dragstart", ev => {
       ev.dataTransfer.setData("text/plain", ev.target.dataset.routineId);
@@ -1917,13 +1928,16 @@ function initPlanner() {
   const calendarGrid = document.getElementById("calendarGrid");
   const today = new Date();
   calendarGrid.innerHTML = "";
+
+  const dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]; // easy weekday labels
+
   for (let i = 0; i < 7; i++) {
     const d = new Date();
     d.setDate(today.getDate() + i);
     const cell = document.createElement("div");
     cell.className = "calendar-cell";
     cell.dataset.date = d.toISOString().split("T")[0];
-    cell.textContent = d.toLocaleDateString('default', { weekday:'short', day:'numeric' });
+    cell.textContent = `${dayNames[d.getDay()]} ${d.getDate()}`;
 
     // Allow drop
     cell.addEventListener("dragover", ev => ev.preventDefault());
