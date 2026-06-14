@@ -37,6 +37,8 @@ let gymPilotData = loadData();
 let currentRoutineExercises = [];
 let activeWorkout = loadActiveWorkout();
 let historyFilter = null;
+let activeWeekFilter = null; // currently highlighted week in chart
+let activeChartFilter = null; // stores currently highlighted month in chart
 
 document.addEventListener("DOMContentLoaded", () => {
   setupTabs();
@@ -1817,19 +1819,22 @@ function renderMonthlyChart(workouts) {
   workouts.forEach(w => {
     const d = parseSafeDate(w.date);
     if (!d) return;
-
     const key = d.toLocaleString("default", { month: "short", year: "numeric" });
     monthlyCounts[key] = (monthlyCounts[key] || 0) + 1;
   });
 
-  const labels = Object.keys(monthlyCounts).sort((a,b) => {
-    const ad = new Date(a); 
+  const labels = Object.keys(monthlyCounts).sort((a, b) => {
+    const ad = new Date(a);
     const bd = new Date(b);
     return ad - bd;
   });
 
   const data = labels.map(l => monthlyCounts[l]);
 
+  // Assign colors: highlight active month if any
+  const backgroundColors = labels.map(l => (activeChartFilter === l ? "var(--accent)" : "#ccc"));
+
+  // Destroy previous chart if exists
   if (window._monthlyChartInstance) {
     window._monthlyChartInstance.destroy();
   }
@@ -1841,12 +1846,95 @@ function renderMonthlyChart(workouts) {
       datasets: [{
         label: "Workouts",
         data,
-        backgroundColor: "var(--accent)",
+        backgroundColor: backgroundColors,
       }]
     },
     options: {
       responsive: true,
-      scales: { y: { beginAtZero: true, precision: 0 } }
+      onClick: (evt, elements) => {
+        if (!elements.length) return;
+        const index = elements[0].index;
+        const monthClicked = labels[index];
+
+        // Update active filter
+        activeChartFilter = monthClicked;
+
+        // Set history filter to this month and re-render
+        const workouts = gymPilotData.completedWorkouts || [];
+        const filtered = workouts.filter(w => {
+          const d = parseSafeDate(w.date);
+          if (!d) return false;
+          const name = d.toLocaleString("default", { month: "short", year: "numeric" });
+          return name === monthClicked;
+        });
+
+        // Store temporarily and re-render history & stats
+        gymPilotData._tempHistoryFilter = filtered;
+        renderHistory();
+        renderStats();
+      },
+      scales: {
+        y: { beginAtZero: true, precision: 0 }
+      }
+    }
+  });
+}
+function renderWeeklyChart(workouts) {
+  const ctx = document.getElementById("weeklyChart").getContext("2d");
+
+  const weeklyCounts = {};
+  workouts.forEach(w => {
+    const d = parseSafeDate(w.date);
+    if (!d) return;
+
+    // Calculate year + week number
+    const firstDayOfYear = new Date(d.getFullYear(),0,1);
+    const pastDaysOfYear = (d - firstDayOfYear)/(1000*60*60*24);
+    const weekNumber = Math.ceil((pastDaysOfYear + firstDayOfYear.getDay()+1)/7);
+    const key = `${d.getFullYear()}-W${weekNumber}`;
+    weeklyCounts[key] = (weeklyCounts[key] || 0) + 1;
+  });
+
+  const labels = Object.keys(weeklyCounts).sort((a,b) => {
+    const [yearA, wA] = a.split("-W");
+    const [yearB, wB] = b.split("-W");
+    return Number(yearA)*52+Number(wA) - Number(yearB)*52-Number(wB);
+  });
+
+  const data = labels.map(l => weeklyCounts[l]);
+  const backgroundColors = labels.map(l => (activeWeekFilter===l ? "var(--accent)" : "#ccc"));
+
+  if (window._weeklyChartInstance) {
+    window._weeklyChartInstance.destroy();
+  }
+
+  window._weeklyChartInstance = new Chart(ctx, {
+    type: "bar",
+    data: { labels, datasets:[{ label:"Workouts", data, backgroundColor: backgroundColors }] },
+    options: {
+      responsive:true,
+      onClick: (evt,elements) => {
+        if(!elements.length) return;
+        const index = elements[0].index;
+        const weekClicked = labels[index];
+        activeWeekFilter = weekClicked;
+
+        // Filter History
+        const filtered = (gymPilotData.completedWorkouts||[]).filter(w=>{
+          const d = parseSafeDate(w.date);
+          if(!d) return false;
+          const firstDayOfYear = new Date(d.getFullYear(),0,1);
+          const pastDays = (d - firstDayOfYear)/(1000*60*60*24);
+          const weekNum = Math.ceil((pastDays + firstDayOfYear.getDay()+1)/7);
+          const key = `${d.getFullYear()}-W${weekNum}`;
+          return key===weekClicked;
+        });
+
+        gymPilotData._tempHistoryFilter = filtered;
+        renderHistory();
+        renderStats();
+      },
+      scales:{ y:{ beginAtZero:true, precision:0 } }
     }
   });
 }
@@ -1928,6 +2016,7 @@ if (streakEl) streakEl.textContent = `Your current streak: ${currentStreak} day$
 
 // Draw monthly chart
 renderMonthlyChart(workouts);
+renderWeeklyChart(workouts);
 }
 function parseSafeDate(dateStr) {
   if (!dateStr) return null;

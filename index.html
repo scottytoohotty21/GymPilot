@@ -368,6 +368,8 @@
 
   <h3>Monthly Training Chart</h3>
   <canvas id="monthlyChart" width="400" height="150"></canvas>
+  <h3 style="margin-top:16px;">Weekly Training Chart</h3>
+<canvas id="weeklyChart" width="400" height="150"></canvas>
 </div>
 
   <div class="data-preview-item">
@@ -377,7 +379,7 @@
       <input type="date" id="statsStartDate" />
       <input type="date" id="statsEndDate" />
       <button onclick="renderStats(true)">Apply</button>
-      <button onclick="historyFilter = null; renderHistory(); renderStats();" class="copy-button">
+      <button onclick="historyFilter=null; activeChartFilter=null; activeWeekFilter=null; renderHistory(); renderStats();" class="copy-button">
   Reset Filter
 </button>
     </div>
