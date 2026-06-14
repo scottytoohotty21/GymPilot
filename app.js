@@ -1303,31 +1303,25 @@ function renderHistory() {
   }
 
   // Always render Stats and Planner, even if no workouts
-  renderStats();
+ renderStats();
 
-  // Ensure routines exist before initializing Planner
-  if (!gymPilotData.routines || !gymPilotData.routines.length) {
-    gymPilotData.routines = [
-      { id: "r1", name: "Push Day", exercises: [] },
-      { id: "r2", name: "Pull Day", exercises: [] },
-      { id: "r3", name: "Leg Day", exercises: [] },
-      { id: "r4", name: "Cardio", exercises: [] },
-      { id: "r5", name: "Full Body", exercises: [] }
-    ];
-  }
+// IMPORTANT: ensure planner always has routines BEFORE init
+if (!gymPilotData.routines || !gymPilotData.routines.length) {
+  gymPilotData.routines = [
+    { id: "r1", name: "Push Day", exercises: [] },
+    { id: "r2", name: "Pull Day", exercises: [] },
+    { id: "r3", name: "Leg Day", exercises: [] },
+    { id: "r4", name: "Cardio", exercises: [] },
+    { id: "r5", name: "Full Body", exercises: [] }
+  ];
+}
 
-  setTimeout(initPlanner, 0);
+// run planner AFTER DOM paints
+setTimeout(() => {
+  initPlanner();
+}, 0);
 
-  // Early return for empty workouts
-  if (workouts.length === 0) {
-    historySummary.textContent = "No workouts logged yet.";
-    historyList.innerHTML = `
-      <div class="empty-state">
-        Complete your first workout and it will appear here.
-      </div>
-    `;
-    return;
-  }
+}
 
   const totalSets = workouts.reduce((total, workout) => {
     return total + workout.exercises.reduce((exerciseTotal, exercise) => {
@@ -1913,18 +1907,18 @@ function initPlanner() {
 
   // Populate sidebar
   const routineList = document.getElementById("routineList");
-  if (routineList) {
-    routineList.innerHTML = gymPilotData.routines.map(r => 
-      `<li class="planned-routine" draggable="true" data-routine-id="${r.id}">${r.name}</li>`
-    ).join("");
 
-    // Add dragstart events
-    document.querySelectorAll("#routineList .planned-routine").forEach(item => {
-      item.addEventListener("dragstart", ev => {
-        ev.dataTransfer.setData("text/plain", ev.target.dataset.routineId);
-      });
+if (routineList) {
+  routineList.innerHTML = (gymPilotData.routines || []).map(r =>
+    `<li class="planned-routine" draggable="true" data-routine-id="${r.id}">${r.name}</li>`
+  ).join("");
+
+  document.querySelectorAll("#routineList .planned-routine").forEach(item => {
+    item.addEventListener("dragstart", ev => {
+      ev.dataTransfer.setData("text/plain", ev.target.dataset.routineId);
     });
-  }
+  });
+}
 
   // Build week calendar
   const calendarGrid = document.getElementById("calendarGrid");
@@ -1932,6 +1926,7 @@ function initPlanner() {
   calendarGrid.innerHTML = "";
 
   const dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  cell.textContent = `${dayNames[d.getDay()]} ${d.getDate()}`;
   const today = new Date();
 
   for (let i = 0; i < 7; i++) {
@@ -1945,12 +1940,17 @@ function initPlanner() {
 
     // Drag & drop
     cell.addEventListener("dragover", ev => ev.preventDefault());
-    cell.addEventListener("drop", ev => {
-      ev.preventDefault();
-      const routineId = ev.dataTransfer.getData("text/plain");
-      plannedWorkouts.push({date: cell.dataset.date, routineId, profile: "Scott", status:"planned"});
-      renderPlanner();
-    });
+cell.addEventListener("drop", ev => {
+  ev.preventDefault();
+  const routineId = ev.dataTransfer.getData("text/plain");
+  plannedWorkouts.push({
+    date: cell.dataset.date,
+    routineId,
+    profile: "Scott",
+    status: "planned"
+  });
+  renderPlanner();
+});
 
     calendarGrid.appendChild(cell);
   }
