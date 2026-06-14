@@ -361,6 +361,14 @@
   </div>
 
   <div id="statsSummary" class="data-preview-list"></div>
+  <!-- Streak + Charts -->
+<div id="streakChartPanel" class="card" style="margin-top:16px;">
+  <h3>Training Streak</h3>
+  <p id="streakDisplay">Your current streak: 0 days</p>
+
+  <h3>Monthly Training Chart</h3>
+  <canvas id="monthlyChart" width="400" height="150"></canvas>
+</div>
 
   <div class="data-preview-item">
     <strong>Custom range</strong>
@@ -718,5 +726,6 @@
   </div>
 
   <script src="app.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </body>
 </html>

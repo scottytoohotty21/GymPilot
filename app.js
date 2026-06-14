@@ -1775,6 +1775,81 @@ function groupByMonth(workouts) {
 
   return map;
 }
+// --- Streak helper ---
+function calculateStreak(workouts, profile = null) {
+  if (!workouts || workouts.length === 0) return 0;
+
+  const filtered = profile
+    ? workouts.filter(w => w.profile === profile)
+    : workouts.slice();
+
+  const sorted = filtered
+    .map(w => parseSafeDate(w.date))
+    .filter(d => d)
+    .sort((a, b) => b - a);
+
+  if (sorted.length === 0) return 0;
+
+  let streak = 1;
+  let lastDate = sorted[0];
+
+  for (let i = 1; i < sorted.length; i++) {
+    const diff = Math.round((lastDate - sorted[i]) / (1000 * 60 * 60 * 24));
+
+    if (diff === 1) {
+      streak++;
+      lastDate = sorted[i];
+    } else if (diff > 1) {
+      break;
+    } else {
+      lastDate = sorted[i];
+    }
+  }
+
+  return streak;
+}
+
+// --- Monthly chart helper ---
+function renderMonthlyChart(workouts) {
+  const ctx = document.getElementById("monthlyChart").getContext("2d");
+
+  const monthlyCounts = {};
+  workouts.forEach(w => {
+    const d = parseSafeDate(w.date);
+    if (!d) return;
+
+    const key = d.toLocaleString("default", { month: "short", year: "numeric" });
+    monthlyCounts[key] = (monthlyCounts[key] || 0) + 1;
+  });
+
+  const labels = Object.keys(monthlyCounts).sort((a,b) => {
+    const ad = new Date(a); 
+    const bd = new Date(b);
+    return ad - bd;
+  });
+
+  const data = labels.map(l => monthlyCounts[l]);
+
+  if (window._monthlyChartInstance) {
+    window._monthlyChartInstance.destroy();
+  }
+
+  window._monthlyChartInstance = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{
+        label: "Workouts",
+        data,
+        backgroundColor: "var(--accent)",
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: { y: { beginAtZero: true, precision: 0 } }
+    }
+  });
+}
 function renderStats(useCustom = false) {
   const workouts = gymPilotData.completedWorkouts || [];
 
@@ -1846,6 +1921,13 @@ const year = workouts.filter(w => {
 </div>
     `).join("")}
   `;
+  // Display streak
+const currentStreak = calculateStreak(workouts);
+const streakEl = document.getElementById("streakDisplay");
+if (streakEl) streakEl.textContent = `Your current streak: ${currentStreak} day${currentStreak !== 1 ? 's' : ''}`;
+
+// Draw monthly chart
+renderMonthlyChart(workouts);
 }
 function parseSafeDate(dateStr) {
   if (!dateStr) return null;
