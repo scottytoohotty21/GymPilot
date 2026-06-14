@@ -1369,6 +1369,15 @@ if (historyFilter && historyFilter.type === "range") {
     `;
   }).join("");
   renderStats();
+  if(!gymPilotData.routines || !gymPilotData.routines.length) {
+  gymPilotData.routines = [
+    { id: "r1", name: "Push Day", exercises: [] },
+    { id: "r2", name: "Pull Day", exercises: [] },
+    { id: "r3", name: "Leg Day", exercises: [] },
+    { id: "r4", name: "Cardio", exercises: [] },
+    { id: "r5", name: "Full Body", exercises: [] }
+  ];
+}
   initPlanner();
 }
 function renderHistoryFiltered(list) {
