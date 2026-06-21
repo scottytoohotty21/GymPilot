@@ -913,3 +913,41 @@
   justify-content: space-between;
   align-items: center;
 }
+/* Planner sidebar routines */
+#routineList .planned-routine {
+  background-color: var(--accent, #007bff);
+  color: #fff;
+  padding: 4px 6px;
+  margin: 4px 0;
+  border-radius: 3px;
+  cursor: grab;
+  font-size: 0.9rem;
+}
+#routineList .planned-routine:hover {
+  opacity: 0.85;
+}
+
+/* Calendar grid and cells */
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+}
+
+.calendar-cell {
+  min-height: 80px;
+  border: 1px solid #ccc;
+  padding: 4px;
+  background: #f9f9f9;
+  color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+.calendar-cell:hover {
+  background-color: #e0e0e0;
+  cursor: pointer;
+}

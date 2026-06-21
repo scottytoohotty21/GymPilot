@@ -1276,6 +1276,96 @@ renderSettings();
   }
 }
 
+// --- Planner Module ---
+function initPlanner() {
+  // Ensure routines exist
+  if(!gymPilotData.routines || !gymPilotData.routines.length){
+    gymPilotData.routines = [
+      {id:"r1", name:"Push Day", exercises:[]},
+      {id:"r2", name:"Pull Day", exercises:[]},
+      {id:"r3", name:"Leg Day", exercises:[]},
+      {id:"r4", name:"Cardio", exercises:[]},
+      {id:"r5", name:"Full Body", exercises:[]}
+    ];
+  }
+
+  // Populate sidebar
+  const routineList = document.getElementById("routineList");
+  if(routineList){
+    routineList.innerHTML = (gymPilotData.routines || []).map(r =>
+      `<li class="planned-routine" draggable="true" data-routine-id="${r.id}">${r.name}</li>`
+    ).join("");
+
+    document.querySelectorAll("#routineList .planned-routine").forEach(item => {
+      item.addEventListener("dragstart", ev => {
+        ev.dataTransfer.setData("text/plain", ev.target.dataset.routineId);
+      });
+    });
+  }
+
+  // Build 7-day calendar
+  const calendarGrid = document.getElementById("calendarGrid");
+  if(!calendarGrid) return;
+  calendarGrid.innerHTML = "";
+  const dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  const today = new Date();
+
+  for(let i=0;i<7;i++){
+    const d = new Date();
+    d.setDate(today.getDate()+i);
+    const cell = document.createElement("div");
+    cell.className = "calendar-cell";
+    cell.dataset.date = d.toISOString().split("T")[0];
+    cell.textContent = `${dayNames[d.getDay()]} ${d.getDate()}`;
+
+    // Drag/drop
+    cell.addEventListener("dragover", ev=>ev.preventDefault());
+    cell.addEventListener("drop", ev=>{
+      ev.preventDefault();
+      const routineId = ev.dataTransfer.getData("text/plain");
+      plannedWorkouts.push({date:cell.dataset.date,routineId,profile:"Scott",status:"planned"});
+      renderPlanner();
+      saveState();
+    });
+
+    calendarGrid.appendChild(cell);
+  }
+
+  renderPlanner();
+}
+
+// Click to mark routine completed
+document.addEventListener("click", ev=>{
+  if(ev.target.classList.contains("planned-routine")){
+    const cell = ev.target.parentElement;
+    const date = cell.dataset.date;
+    const routineName = ev.target.textContent;
+    const routine = (gymPilotData.routines || []).find(r=>r.name===routineName);
+    if(!routine) return;
+
+    const index = plannedWorkouts.findIndex(x=>x.date===date && x.routineId===routine.id);
+    if(index!==-1){
+      plannedWorkouts[index].status="completed";
+      gymPilotData.completedWorkouts.push({
+        date:new Date(date).toISOString(),
+        routineName:routine.name,
+        exercises:routine.exercises,
+        profile:"Scott"
+      });
+
+      renderPlanner();
+      renderHistory();
+      renderStats();
+      saveState();
+    }
+  }
+});
+
+// Auto-save function
+function saveState(){
+  localStorage.setItem("gymPilotData",JSON.stringify(gymPilotData));
+  localStorage.setItem("plannedWorkouts",JSON.stringify(plannedWorkouts));
+}
 /* ---------------------------
    History
 ---------------------------- */
@@ -1369,6 +1459,11 @@ if (historyFilter && historyFilter.type === "range") {
     `;
   }).join("");
   renderStats();
+  setTimeout(()=>{
+  requestAnimationFrame(()=>{
+    initPlanner();
+  });
+},0);
 }
 function renderHistoryFiltered(list) {
   const container = document.getElementById("historyList");

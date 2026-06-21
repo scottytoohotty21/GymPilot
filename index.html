@@ -359,7 +359,22 @@
       <p>Sessions overview and trends</p>
     </div>
   </div>
+<!-- Planner Sidebar + Calendar -->
+<div id="plannerContainer" class="card" style="margin-bottom:16px;">
+  <div style="display:flex; gap:16px; flex-wrap:wrap;">
+    <!-- Sidebar: Routine Library -->
+    <div id="routineSidebar" style="flex:1; min-width:150px; max-height:250px; overflow-y:auto;">
+      <h3>Available Routines</h3>
+      <ul id="routineList"></ul>
+    </div>
 
+    <!-- Calendar Grid -->
+    <div id="plannerCalendar" style="flex:3; min-width:300px;">
+      <h3>Week View</h3>
+      <div id="calendarGrid" class="calendar-grid"></div>
+    </div>
+  </div>
+</div>
   <div id="statsSummary" class="data-preview-list"></div>
 
   <div class="data-preview-item">
