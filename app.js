@@ -1276,18 +1276,18 @@ renderSettings();
   }
 }
 
-// --- Planner Module ---
+// --- Cleaned initPlanner() for app.js ---
 function initPlanner() {
   // Ensure routines exist
   if (!gymPilotData.routines || !gymPilotData.routines.length) {
-  gymPilotData.routines = [
-    {id:"r1", name:"Push Day", exercises:[]},
-    {id:"r2", name:"Pull Day", exercises:[]},
-    {id:"r3", name:"Leg Day", exercises:[]},
-    {id:"r4", name:"Cardio", exercises:[]},
-    {id:"r5", name:"Full Body", exercises:[]}
-  ];
-}
+    gymPilotData.routines = [
+      {id:"r1", name:"Push Day", exercises:[]},
+      {id:"r2", name:"Pull Day", exercises:[]},
+      {id:"r3", name:"Leg Day", exercises:[]},
+      {id:"r4", name:"Cardio", exercises:[]},
+      {id:"r5", name:"Full Body", exercises:[]}
+    ];
+  }
 
   // Populate sidebar
   const routineList = document.getElementById("routineList");
@@ -1296,7 +1296,7 @@ function initPlanner() {
       `<li class="planned-routine" draggable="true" data-routine-id="${r.id}">${r.name}</li>`
     ).join("");
 
-    // Add drag events — ONLY ONCE
+    // Add dragstart event for all sidebar routines
     document.querySelectorAll("#routineList .planned-routine").forEach(item => {
       item.addEventListener("dragstart", ev => {
         ev.dataTransfer.setData("text/plain", ev.target.dataset.routineId);
@@ -1306,7 +1306,7 @@ function initPlanner() {
 
   // Build 7-day calendar
   const calendarGrid = document.getElementById("calendarGrid");
-  if (!calendarGrid) return;
+  if (!calendarGrid) return; // safety
   calendarGrid.innerHTML = "";
   const dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
   const today = new Date();
@@ -1319,12 +1319,17 @@ function initPlanner() {
     cell.dataset.date = d.toISOString().split("T")[0];
     cell.textContent = `${dayNames[d.getDay()]} ${d.getDate()}`;
 
-    // Drag/drop
+    // Enable drag/drop
     cell.addEventListener("dragover", ev => ev.preventDefault());
     cell.addEventListener("drop", ev => {
       ev.preventDefault();
       const routineId = ev.dataTransfer.getData("text/plain");
-      plannedWorkouts.push({date: cell.dataset.date, routineId, profile:"Scott", status:"planned"});
+      plannedWorkouts.push({
+        date: cell.dataset.date,
+        routineId,
+        profile: "Scott",
+        status: "planned"
+      });
       renderPlanner();
       saveState();
     });
@@ -1335,7 +1340,7 @@ function initPlanner() {
   renderPlanner();
 }
 
-// Click to mark routine completed
+// Click-to-complete for routines in the calendar
 document.addEventListener("click", ev => {
   if (ev.target.classList.contains("planned-routine")) {
     const cell = ev.target.parentElement;
@@ -1344,7 +1349,7 @@ document.addEventListener("click", ev => {
     const routine = (gymPilotData.routines || []).find(r => r.name === routineName);
     if (!routine) return;
 
-    const index = plannedWorkouts.findIndex(x => x.date===date && x.routineId===routine.id);
+    const index = plannedWorkouts.findIndex(x => x.date === date && x.routineId === routine.id);
     if (index !== -1) {
       plannedWorkouts[index].status = "completed";
       gymPilotData.completedWorkouts.push({
@@ -1460,11 +1465,7 @@ if (historyFilter && historyFilter.type === "range") {
     `;
   }).join("");
   renderStats();
-  setTimeout(()=>{
-  requestAnimationFrame(()=>{
-    setTimeout(() => {
-  requestAnimationFrame(() => {
-    initPlanner();
+setTimeout(() => requestAnimationFrame(initPlanner), 0);
   });
 }, 0);
   });
