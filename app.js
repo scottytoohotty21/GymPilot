@@ -1280,14 +1280,14 @@ renderSettings();
 function initPlanner() {
   // Ensure routines exist
   if (!gymPilotData.routines || !gymPilotData.routines.length) {
-    gymPilotData.routines = [
-      {id:"r1", name:"Push Day", exercises:[]},
-      {id:"r2", name:"Pull Day", exercises:[]},
-      {id:"r3", name:"Leg Day", exercises:[]},
-      {id:"r4", name:"Cardio", exercises:[]},
-      {id:"r5", name:"Full Body", exercises:[]}
-    ];
-  }
+  gymPilotData.routines = [
+    {id:"r1", name:"Push Day", exercises:[]},
+    {id:"r2", name:"Pull Day", exercises:[]},
+    {id:"r3", name:"Leg Day", exercises:[]},
+    {id:"r4", name:"Cardio", exercises:[]},
+    {id:"r5", name:"Full Body", exercises:[]}
+  ];
+}
 
   // Populate sidebar
   const routineList = document.getElementById("routineList");
