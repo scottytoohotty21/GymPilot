@@ -951,3 +951,16 @@
   background-color: #e0e0e0;
   cursor: pointer;
 }
+#routineList .planned-routine {
+  background-color: var(--accent, #007bff);
+  color: #fff;
+  padding: 4px 6px;
+  margin: 4px 0;
+  border-radius: 3px;
+  cursor: grab;
+  font-size: 0.9rem;
+}
+
+.calendar-cell {
+  color: #000;
+}
