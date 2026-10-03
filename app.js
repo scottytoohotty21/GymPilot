@@ -40,6 +40,13 @@ let historyFilter = null;
 let activeWeekFilter = null; // currently highlighted week in chart
 let activeChartFilter = null; // stores currently highlighted month in chart
 
+let plannedWorkouts = JSON.parse(
+  localStorage.getItem("gympilot-planned-workouts-v1") || "[]"
+);
+
+let plannerCurrentMonth = new Date();
+let plannerSelectedDate = null;
+
 document.addEventListener("DOMContentLoaded", () => {
   setupTabs();
   setupDashboardJumpButtons();
@@ -47,6 +54,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupRoutineBuilder();
   setupWorkoutMode();
   setupSettings();
+  setupPlanner();
 
   applyActiveTheme();
   setDefaultWorkoutDate();
@@ -1276,105 +1284,282 @@ renderSettings();
   }
 }
 
-// --- Cleaned initPlanner() for app.js ---
-function initPlanner() {
-  // Ensure routines exist
-  if (!gymPilotData.routines || !gymPilotData.routines.length) {
-    gymPilotData.routines = [
-      {id:"r1", name:"Push Day", exercises:[]},
-      {id:"r2", name:"Pull Day", exercises:[]},
-      {id:"r3", name:"Leg Day", exercises:[]},
-      {id:"r4", name:"Cardio", exercises:[]},
-      {id:"r5", name:"Full Body", exercises:[]}
-    ];
+/* ---------------------------
+   Workout Planner
+---------------------------- */
+
+function savePlannedWorkouts() {
+  localStorage.setItem(
+    "gympilot-planned-workouts-v1",
+    JSON.stringify(plannedWorkouts)
+  );
+}
+
+function formatPlannerDate(dateString) {
+  const date = new Date(`${dateString}T12:00:00`);
+
+  return date.toLocaleDateString("default", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric"
+  });
+}
+
+function getPlannerDateString(year, month, day) {
+  const date = new Date(year, month, day);
+
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0")
+  ].join("-");
+}
+
+function renderPlanner() {
+  const calendar = document.getElementById("plannerCalendarGrid");
+  const monthLabel = document.getElementById("plannerMonthLabel");
+
+  if (!calendar || !monthLabel) {
+    return;
   }
 
-  // Populate sidebar
-  const routineList = document.getElementById("routineList");
-  if (routineList) {
-    routineList.innerHTML = gymPilotData.routines.map(r =>
-      `<li class="planned-routine" draggable="true" data-routine-id="${r.id}">${r.name}</li>`
-    ).join("");
+  const year = plannerCurrentMonth.getFullYear();
+  const month = plannerCurrentMonth.getMonth();
 
-    // Add dragstart event for all sidebar routines
-    document.querySelectorAll("#routineList .planned-routine").forEach(item => {
-      item.addEventListener("dragstart", ev => {
-        ev.dataTransfer.setData("text/plain", ev.target.dataset.routineId);
-      });
+  monthLabel.textContent = plannerCurrentMonth.toLocaleDateString(
+    "default",
+    {
+      month: "long",
+      year: "numeric"
+    }
+  );
+
+  calendar.innerHTML = "";
+
+  const firstDay = new Date(year, month, 1);
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  const startingDay = firstDay.getDay();
+
+  // Empty cells before the first day of the month
+  for (let i = 0; i < startingDay; i++) {
+    const emptyCell = document.createElement("div");
+    emptyCell.className = "planner-day planner-day-empty";
+    calendar.appendChild(emptyCell);
+  }
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateString = getPlannerDateString(year, month, day);
+
+    const cell = document.createElement("button");
+    cell.type = "button";
+    cell.className = "planner-day";
+    cell.dataset.date = dateString;
+
+    const todayString = getPlannerDateString(
+      new Date().getFullYear(),
+      new Date().getMonth(),
+      new Date().getDate()
+    );
+
+    if (dateString === todayString) {
+      cell.classList.add("planner-today");
+    }
+
+    const dayNumber = document.createElement("span");
+    dayNumber.className = "planner-day-number";
+    dayNumber.textContent = day;
+
+    cell.appendChild(dayNumber);
+
+    const workoutsForDay = plannedWorkouts.filter(
+      workout => workout.date === dateString
+    );
+
+    workoutsForDay.forEach(workout => {
+      const routine = (gymPilotData.routines || []).find(
+        routineItem => routineItem.id === workout.routineId
+      );
+
+      if (!routine) {
+        return;
+      }
+
+      const routineBadge = document.createElement("span");
+      routineBadge.className = "planner-routine-badge";
+      routineBadge.textContent = routine.name;
+
+      cell.appendChild(routineBadge);
     });
-  }
 
-  // Build 7-day calendar
-  const calendarGrid = document.getElementById("calendarGrid");
-  if (!calendarGrid) return; // safety
-  calendarGrid.innerHTML = "";
-  const dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-  const today = new Date();
-
-  for (let i = 0; i < 7; i++) {
-    const d = new Date();
-    d.setDate(today.getDate() + i);
-    const cell = document.createElement("div");
-    cell.className = "calendar-cell";
-    cell.dataset.date = d.toISOString().split("T")[0];
-    cell.textContent = `${dayNames[d.getDay()]} ${d.getDate()}`;
-
-    // Enable drag/drop
-    cell.addEventListener("dragover", ev => ev.preventDefault());
-    cell.addEventListener("drop", ev => {
-      ev.preventDefault();
-      const routineId = ev.dataTransfer.getData("text/plain");
-      plannedWorkouts.push({
-        date: cell.dataset.date,
-        routineId,
-        profile: "Scott",
-        status: "planned"
-      });
-      renderPlanner();
-      saveState();
+    cell.addEventListener("click", () => {
+      openPlannerModal(dateString);
     });
 
-    calendarGrid.appendChild(cell);
+    calendar.appendChild(cell);
   }
+}
+
+function populatePlannerRoutineSelect() {
+  const select = document.getElementById("plannerRoutineSelect");
+
+  if (!select) {
+    return;
+  }
+
+  const routines = gymPilotData.routines || [];
+
+  select.innerHTML = `
+    <option value="">Choose a routine</option>
+    ${routines.map(routine => `
+      <option value="${routine.id}">
+        ${escapeHTML(routine.name)}
+      </option>
+    `).join("")}
+  `;
+
+  if (routines.length === 0) {
+    select.innerHTML = `
+      <option value="">Create a routine first</option>
+    `;
+
+    select.disabled = true;
+  } else {
+    select.disabled = false;
+  }
+}
+
+function openPlannerModal(dateString) {
+  const modal = document.getElementById("plannerModal");
+  const selectedDate = document.getElementById("plannerSelectedDate");
+  const select = document.getElementById("plannerRoutineSelect");
+
+  if (!modal || !selectedDate || !select) {
+    return;
+  }
+
+  plannerSelectedDate = dateString;
+
+  selectedDate.textContent = formatPlannerDate(dateString);
+
+  populatePlannerRoutineSelect();
+
+  const existingWorkout = plannedWorkouts.find(
+    workout => workout.date === dateString
+  );
+
+  select.value = existingWorkout ? existingWorkout.routineId : "";
+
+  modal.classList.remove("hidden");
+}
+
+function closePlannerModal() {
+  const modal = document.getElementById("plannerModal");
+
+  if (!modal) {
+    return;
+  }
+
+  modal.classList.add("hidden");
+
+  plannerSelectedDate = null;
+}
+
+function savePlannerWorkout() {
+  const select = document.getElementById("plannerRoutineSelect");
+
+  if (!plannerSelectedDate || !select) {
+    return;
+  }
+
+  const routineId = select.value;
+
+  if (!routineId) {
+    return;
+  }
+
+  const existingIndex = plannedWorkouts.findIndex(
+    workout => workout.date === plannerSelectedDate
+  );
+
+  const plannedWorkout = {
+    id: crypto.randomUUID(),
+    date: plannerSelectedDate,
+    routineId,
+    profile: getActiveProfile()
+  };
+
+  if (existingIndex !== -1) {
+    plannedWorkouts[existingIndex] = plannedWorkout;
+  } else {
+    plannedWorkouts.push(plannedWorkout);
+  }
+
+  savePlannedWorkouts();
 
   renderPlanner();
+
+  closePlannerModal();
+
+  updateSaveStatus("Saved");
 }
 
-// Click-to-complete for routines in the calendar
-document.addEventListener("click", ev => {
-  if (ev.target.classList.contains("planned-routine")) {
-    const cell = ev.target.parentElement;
-    const date = cell.dataset.date;
-    const routineName = ev.target.textContent;
-    const routine = (gymPilotData.routines || []).find(r => r.name === routineName);
-    if (!routine) return;
+function setupPlanner() {
+  const previousButton = document.getElementById("plannerPreviousMonth");
+  const nextButton = document.getElementById("plannerNextMonth");
+  const saveButton = document.getElementById("plannerSaveButton");
+  const cancelButton = document.getElementById("plannerCancelButton");
+  const closeButton = document.getElementById("plannerModalClose");
+  const backdrop = document.getElementById("plannerModalBackdrop");
 
-    const index = plannedWorkouts.findIndex(x => x.date === date && x.routineId === routine.id);
-    if (index !== -1) {
-      plannedWorkouts[index].status = "completed";
-      gymPilotData.completedWorkouts.push({
-        date: new Date(date).toISOString(),
-        routineName: routine.name,
-        exercises: routine.exercises,
-        profile: "Scott"
-      });
+  if (previousButton) {
+    previousButton.addEventListener("click", () => {
+      plannerCurrentMonth.setMonth(
+        plannerCurrentMonth.getMonth() - 1
+      );
 
       renderPlanner();
-      renderHistory();
-      renderStats();
-      saveState();
-    }
+    });
   }
-});
 
-// Auto-save function
-function saveState() {
-  localStorage.setItem("gymPilotData", JSON.stringify(gymPilotData));
-  localStorage.setItem("plannedWorkouts", JSON.stringify(plannedWorkouts));
+  if (nextButton) {
+    nextButton.addEventListener("click", () => {
+      plannerCurrentMonth.setMonth(
+        plannerCurrentMonth.getMonth() + 1
+      );
+
+      renderPlanner();
+    });
+  }
+
+  if (saveButton) {
+    saveButton.addEventListener("click", () => {
+      savePlannerWorkout();
+    });
+  }
+
+  if (cancelButton) {
+    cancelButton.addEventListener("click", () => {
+      closePlannerModal();
+    });
+  }
+
+  if (closeButton) {
+    closeButton.addEventListener("click", () => {
+      closePlannerModal();
+    });
+  }
+
+  if (backdrop) {
+    backdrop.addEventListener("click", () => {
+      closePlannerModal();
+    });
+  }
+
+  populatePlannerRoutineSelect();
+  renderPlanner();
 }
-/* ---------------------------
-   History
----------------------------- */
 
 function renderHistory() {
   const historySummary = document.getElementById("historySummary");
