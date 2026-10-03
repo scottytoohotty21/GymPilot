@@ -1464,12 +1464,7 @@ if (historyFilter && historyFilter.type === "range") {
       </article>
     `;
   }).join("");
-  renderStats();
-setTimeout(() => requestAnimationFrame(initPlanner), 0);
-  });
-}, 0);
-  });
-},0);
+   renderStats();
 }
 function renderHistoryFiltered(list) {
   const container = document.getElementById("historyList");
