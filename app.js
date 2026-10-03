@@ -45,14 +45,6 @@ let plannedWorkouts = JSON.parse(
 
 let plannerCurrentMonth = new Date();
 let plannerSelectedDate = null;
-
-let plannedWorkouts = JSON.parse(
-  localStorage.getItem("gympilot-planned-workouts-v1") || "[]"
-);
-
-let plannerCurrentMonth = new Date();
-let plannerSelectedDate = null;
-
 document.addEventListener("DOMContentLoaded", () => {
   setupTabs();
   setupDashboardJumpButtons();
