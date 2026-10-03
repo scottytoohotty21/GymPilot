@@ -913,42 +913,190 @@
   justify-content: space-between;
   align-items: center;
 }
-/* Planner sidebar routines */
-#routineList .planned-routine {
-  background-color: var(--accent, #007bff);
-  color: #fff;
-  padding: 4px 6px;
-  margin: 4px 0;
-  border-radius: 3px;
-  cursor: grab;
-  font-size: 0.9rem;
+/* ---------------------------
+   Workout Planner
+---------------------------- */
+
+.planner-card {
+  overflow: hidden;
 }
 
-#routineList .planned-routine:hover {
-  opacity: 0.85;
+.planner-heading {
+  align-items: center;
+  gap: 16px;
 }
 
-/* Calendar grid and cells */
-.calendar-grid {
+.planner-month-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.planner-month-controls strong {
+  min-width: 150px;
+  text-align: center;
+  font-size: 1rem;
+}
+
+.planner-weekdays {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 8px;
+  margin-bottom: 8px;
 }
 
-.calendar-cell {
-  min-height: 80px;
-  border: 1px solid #ccc;
-  padding: 4px;
-  background: #f9f9f9;
-  color: #000;
+.planner-weekdays div {
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 800;
+  opacity: 0.7;
+  padding: 8px 4px;
+}
+
+.planner-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.planner-day {
+  min-height: 105px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.planner-day:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.planner-day-empty {
+  background: transparent;
+  border: 0;
+  cursor: default;
+}
+
+.planner-day-number {
+  font-weight: 900;
+  font-size: 1rem;
+}
+
+.planner-today {
+  border: 2px solid var(--accent);
+}
+
+.planner-routine-badge {
+  display: block;
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--button-text);
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.planner-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: bold;
-  font-size: 0.9rem;
+  padding: 20px;
 }
 
-.calendar-cell:hover {
-  background-color: #e0e0e0;
-  cursor: pointer;
+.planner-modal.hidden {
+  display: none;
+}
+
+.planner-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.planner-modal-card {
+  position: relative;
+  z-index: 1;
+  width: min(520px, 100%);
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  padding: 22px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.3);
+}
+
+.planner-modal-close {
+  min-width: 44px;
+  min-height: 44px;
+  font-size: 1.4rem;
+}
+
+.planner-routine-picker {
+  margin: 20px 0;
+}
+
+.planner-routine-picker label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 800;
+}
+
+.planner-routine-picker select {
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--text);
+  font: inherit;
+}
+
+@media (max-width: 700px) {
+  .planner-heading {
+    align-items: stretch;
+  }
+
+  .planner-month-controls {
+    justify-content: space-between;
+  }
+
+  .planner-month-controls strong {
+    min-width: 0;
+  }
+
+  .planner-weekdays {
+    gap: 4px;
+  }
+
+  .planner-calendar-grid {
+    gap: 4px;
+  }
+
+  .planner-day {
+    min-height: 82px;
+    padding: 6px;
+    border-radius: 10px;
+  }
+
+  .planner-routine-badge {
+    font-size: 0.65rem;
+    padding: 5px;
+  }
 }
