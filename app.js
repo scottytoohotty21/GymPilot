@@ -39,6 +39,12 @@ let activeWorkout = loadActiveWorkout();
 let historyFilter = null;
 let activeWeekFilter = null; // currently highlighted week in chart
 let activeChartFilter = null; // stores currently highlighted month in chart
+let plannedWorkouts = JSON.parse(
+  localStorage.getItem("gympilot-planned-workouts-v1") || "[]"
+);
+
+let plannerCurrentMonth = new Date();
+let plannerSelectedDate = null;
 
 let plannedWorkouts = JSON.parse(
   localStorage.getItem("gympilot-planned-workouts-v1") || "[]"
