@@ -359,20 +359,90 @@
       <p>Sessions overview and trends</p>
     </div>
   </div>
-<!-- Planner Sidebar + Calendar -->
-<div id="plannerContainer" class="card" style="margin-bottom:16px;">
-  <div style="display:flex; gap:16px; flex-wrap:wrap;">
-    <!-- Sidebar: Routine Library -->
-    <div id="routineSidebar" style="flex:1; min-width:150px; max-height:250px; overflow-y:auto;">
-      <h3>Available Routines</h3>
-      <ul id="routineList"></ul>
+<!-- Planner -->
+<div id="plannerContainer" class="card planner-card">
+
+  <div class="section-heading planner-heading">
+    <div>
+      <h3>Workout Planner</h3>
+      <p>Choose a date and add one of your saved routines.</p>
     </div>
 
-    <!-- Calendar Grid -->
-    <div id="plannerCalendar" style="flex:3; min-width:300px;">
-      <h3>Week View</h3>
-      <div id="calendarGrid" class="calendar-grid"></div>
+    <div class="planner-month-controls">
+      <button type="button" class="secondary-button" id="plannerPreviousMonth">
+        ‹
+      </button>
+
+      <strong id="plannerMonthLabel">Month Year</strong>
+
+      <button type="button" class="secondary-button" id="plannerNextMonth">
+        ›
+      </button>
     </div>
+  </div>
+
+  <div class="planner-weekdays">
+    <div>Sun</div>
+    <div>Mon</div>
+    <div>Tue</div>
+    <div>Wed</div>
+    <div>Thu</div>
+    <div>Fri</div>
+    <div>Sat</div>
+  </div>
+
+  <div id="plannerCalendarGrid" class="planner-calendar-grid"></div>
+
+</div>
+
+<!-- Plan Workout Modal -->
+<div id="plannerModal" class="planner-modal hidden">
+
+  <div class="planner-modal-backdrop" id="plannerModalBackdrop"></div>
+
+  <div class="planner-modal-card">
+
+    <div class="section-heading">
+      <div>
+        <h3>Plan a workout</h3>
+        <p id="plannerSelectedDate">Choose a routine for this date.</p>
+      </div>
+
+      <button
+        type="button"
+        class="secondary-button planner-modal-close"
+        id="plannerModalClose"
+      >
+        ×
+      </button>
+    </div>
+
+    <div class="planner-routine-picker">
+      <label for="plannerRoutineSelect">Saved routine</label>
+
+      <select id="plannerRoutineSelect">
+        <option value="">Choose a routine</option>
+      </select>
+    </div>
+
+    <div class="form-actions">
+      <button
+        type="button"
+        class="secondary-button"
+        id="plannerCancelButton"
+      >
+        Cancel
+      </button>
+
+      <button
+        type="button"
+        class="primary-button"
+        id="plannerSaveButton"
+      >
+        Add to planner
+      </button>
+    </div>
+
   </div>
 </div>
   <div id="statsSummary" class="data-preview-list"></div>
