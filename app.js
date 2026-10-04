@@ -806,10 +806,12 @@ plannedUnit: item.plannedUnit || "kg"
   sortRoutines();
   saveData();
 
-  renderDashboard();
-  renderRoutineBuilder();
-  populateWorkoutRoutineSelect();
-  resetRoutineForm();
+renderDashboard();
+renderRoutineBuilder();
+populateWorkoutRoutineSelect();
+populatePlannerRoutineSelect();
+renderPlanner();
+resetRoutineForm();
 }
 
 function renderRoutineBuilder() {
