@@ -1126,3 +1126,62 @@
     padding: 5px;
   }
 }
+/* ---------------------------
+   Planner light calendar card
+---------------------------- */
+
+.planner-card {
+  background: #eef5f9;
+  color: #12324a;
+  border-color: #d4e2ea;
+}
+
+.planner-card .section-heading h3,
+.planner-card .section-heading p {
+  color: #12324a;
+}
+
+.planner-card .section-heading p {
+  opacity: 0.75;
+}
+
+.planner-month-controls strong {
+  color: #12324a;
+}
+
+.planner-weekdays div {
+  color: #536b7b;
+  opacity: 1;
+}
+
+.planner-day {
+  background: #ffffff;
+  color: #12324a;
+  border-color: #cbdbe5;
+}
+
+.planner-day:hover {
+  background: #f7fbfd;
+  border-color: var(--accent);
+}
+
+.planner-day-empty {
+  background: transparent;
+  border: 0;
+}
+
+.planner-today {
+  border: 2px solid var(--accent);
+  background: #f3fbff;
+}
+
+.planner-routine-badge {
+  background: var(--accent);
+  color: #07304a;
+}
+
+.planner-month-controls .secondary-button {
+  background: #ffffff;
+  color: #12324a;
+  border-color: #cbdbe5;
+}
