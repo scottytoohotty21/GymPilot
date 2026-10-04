@@ -1340,7 +1340,7 @@ function renderPlanner() {
   const firstDay = new Date(year, month, 1);
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-  const startingDay = firstDay.getDay();
+  const startingDay = (firstDay.getDay() + 6) % 7;
 
   // Empty cells before the first day of the month
   for (let i = 0; i < startingDay; i++) {
