@@ -1506,6 +1506,10 @@ function savePlannerWorkout() {
 }
 
 function setupPlanner() {
+    const plannerTab = document.getElementById("showPlannerTab");
+const historyTab = document.getElementById("showHistoryTab");
+const plannerPanel = document.getElementById("plannerPanel");
+const historyPanel = document.getElementById("historyPanel");
   const previousButton = document.getElementById("plannerPreviousMonth");
   const nextButton = document.getElementById("plannerNextMonth");
   const saveButton = document.getElementById("plannerSaveButton");
@@ -1513,6 +1517,27 @@ function setupPlanner() {
   const closeButton = document.getElementById("plannerModalClose");
   const backdrop = document.getElementById("plannerModalBackdrop");
 
+  if (plannerTab && historyTab && plannerPanel && historyPanel) {
+  plannerTab.addEventListener("click", () => {
+    plannerPanel.classList.remove("hidden");
+    historyPanel.classList.add("hidden");
+
+    plannerTab.classList.add("active");
+    historyTab.classList.remove("active");
+
+    renderPlanner();
+  });
+
+  historyTab.addEventListener("click", () => {
+    plannerPanel.classList.add("hidden");
+    historyPanel.classList.remove("hidden");
+
+    plannerTab.classList.remove("active");
+    historyTab.classList.add("active");
+
+    renderHistory();
+  });
+}
   if (previousButton) {
     previousButton.addEventListener("click", () => {
       plannerCurrentMonth.setMonth(
