@@ -1,2482 +1,930 @@
-const STORAGE_KEY = "gympilot-data-v1";
-const ACTIVE_WORKOUT_STORAGE_KEY = "gympilot-active-workout-v1";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
 
-const defaultData = {
-  appName: "GymPilot",
-  routines: [],
-  exercises: [],
-  completedWorkouts: [],
-  personalBests: [],
-  nutrition: {
-    foods: [],
-    meals: [],
-    dailyLogs: []
-  },
-  progress: {
-    checkIns: [],
-    measurements: [],
-    photos: []
-  },
-  settings: {
-  activeProfile: "Scott",
-  accountabilityPartner: "Laurie",
-  profiles: [
-    {
-      name: "Scott",
-      theme: "blue"
-    },
-    {
-      name: "Laurie",
-      theme: "pink"
-    }
-  ]
-}
-};
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-let gymPilotData = loadData();
-let currentRoutineExercises = [];
-let activeWorkout = loadActiveWorkout();
-let historyFilter = null;
-let activeWeekFilter = null; // currently highlighted week in chart
-let activeChartFilter = null; // stores currently highlighted month in chart
-let plannedWorkouts = JSON.parse(
-  localStorage.getItem("gympilot-planned-workouts-v1") || "[]"
-);
+  <title>GymPilot</title>
 
-let plannerCurrentMonth = new Date();
-let plannerSelectedDate = null;
-document.addEventListener("DOMContentLoaded", () => {
-  setupTabs();
-  setupDashboardJumpButtons();
-  setupExerciseLibrary();
-  setupRoutineBuilder();
-  setupWorkoutMode();
-  setupSettings();
-  setupPlanner();
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="styles.css" />
 
-  applyActiveTheme();
-  setDefaultWorkoutDate();
-  renderDashboard();
-  renderExerciseLibrary();
-  renderRoutineBuilder();
-  populateRoutineExerciseSelect();
-  populateWorkoutRoutineSelect();
-  renderWorkoutMode();
-  renderHistory();
-renderPersonalBests();
-renderSettings();
+  <meta name="theme-color" content="#111827" />
+</head>
 
-updateSaveStatus("Ready");
-});
+<body>
+  <div class="app-shell">
 
-function loadData() {
-  const savedData = localStorage.getItem(STORAGE_KEY);
-
-  if (!savedData) {
-    return structuredClone(defaultData);
-  }
-
-  try {
-    const parsedData = JSON.parse(savedData);
-
-    return {
-      ...structuredClone(defaultData),
-      ...parsedData,
-      routines: parsedData.routines || [],
-      exercises: parsedData.exercises || [],
-      completedWorkouts: parsedData.completedWorkouts || [],
-      personalBests: parsedData.personalBests || [],
-nutrition: {
-  ...structuredClone(defaultData.nutrition),
-  ...(parsedData.nutrition || {})
-},
-progress: {
-  ...structuredClone(defaultData.progress),
-  ...(parsedData.progress || {})
-},
-settings: {
-  ...defaultData.settings,
-  ...(parsedData.settings || {}),
-  profiles: getMergedProfiles(parsedData.settings?.profiles)
-}
-    };
-  } catch (error) {
-    console.error("Could not load GymPilot data:", error);
-    return structuredClone(defaultData);
-  }
-}
-
-function saveData() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(gymPilotData));
-  updateSaveStatus("Saved");
-}
-
-function setupTabs() {
-  const tabButtons = document.querySelectorAll(".tab-button");
-  const screens = document.querySelectorAll(".screen");
-
-  tabButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-      showScreen(button.dataset.screen);
-    });
-  });
-}
-
-function showScreen(screenId) {
-  const tabButtons = document.querySelectorAll(".tab-button");
-  const screens = document.querySelectorAll(".screen");
-
-  tabButtons.forEach((tab) => {
-    tab.classList.toggle("active", tab.dataset.screen === screenId);
-  });
-
-  screens.forEach((screen) => {
-    screen.classList.toggle("active", screen.id === screenId);
-  });
-
-  window.scrollTo({
-    top: 0,
-    behavior: "smooth"
-  });
-}
-
-function setupDashboardJumpButtons() {
-  const jumpButtons = document.querySelectorAll("[data-jump-screen]");
-
-  jumpButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-      showScreen(button.dataset.jumpScreen);
-    });
-  });
-}
-
-/* ---------------------------
-   Active Workout Auto-save
----------------------------- */
-
-function loadActiveWorkout() {
-  const savedWorkout = localStorage.getItem(ACTIVE_WORKOUT_STORAGE_KEY);
-
-  if (!savedWorkout) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(savedWorkout);
-  } catch (error) {
-    console.error("Could not load active workout:", error);
-    localStorage.removeItem(ACTIVE_WORKOUT_STORAGE_KEY);
-    return null;
-  }
-}
-
-function saveActiveWorkout() {
-  if (!activeWorkout) {
-    localStorage.removeItem(ACTIVE_WORKOUT_STORAGE_KEY);
-    return;
-  }
-
-  localStorage.setItem(ACTIVE_WORKOUT_STORAGE_KEY, JSON.stringify(activeWorkout));
-}
-
-function clearSavedActiveWorkout() {
-  localStorage.removeItem(ACTIVE_WORKOUT_STORAGE_KEY);
-}
-/* ---------------------------
-   Settings / Profiles / Themes
----------------------------- */
-
-function setupSettings() {
-  const activeProfileSelect = document.getElementById("activeProfileSelect");
-  const scottThemeSelect = document.getElementById("scottThemeSelect");
-  const laurieThemeSelect = document.getElementById("laurieThemeSelect");
-
-  if (activeProfileSelect) {
-    activeProfileSelect.addEventListener("change", () => {
-      gymPilotData.settings.activeProfile = activeProfileSelect.value;
-      saveData();
-      applyActiveTheme();
-      renderDashboard();
-      renderSettings();
-    });
-  }
-
-  if (scottThemeSelect) {
-    scottThemeSelect.addEventListener("change", () => {
-      updateProfileTheme("Scott", scottThemeSelect.value);
-    });
-  }
-
-  if (laurieThemeSelect) {
-    laurieThemeSelect.addEventListener("change", () => {
-      updateProfileTheme("Laurie", laurieThemeSelect.value);
-    });
-  }
-}
-
-function renderSettings() {
-  const activeProfileSelect = document.getElementById("activeProfileSelect");
-  const scottThemeSelect = document.getElementById("scottThemeSelect");
-  const laurieThemeSelect = document.getElementById("laurieThemeSelect");
-  const settingsSummary = document.getElementById("settingsSummary");
-
-  const activeProfile = getActiveProfile();
-  const scottProfile = getProfileByName("Scott");
-  const laurieProfile = getProfileByName("Laurie");
-
-  if (activeProfileSelect) {
-    activeProfileSelect.value = activeProfile;
-  }
-
-  if (scottThemeSelect) {
-    scottThemeSelect.value = scottProfile.theme;
-  }
-
-  if (laurieThemeSelect) {
-    laurieThemeSelect.value = laurieProfile.theme;
-  }
-
-  if (settingsSummary) {
-    settingsSummary.textContent = `Training as ${activeProfile}. Scott theme: ${themeLabel(scottProfile.theme)}. Laurie theme: ${themeLabel(laurieProfile.theme)}.`;
-  }
-}
-
-function updateProfileTheme(profileName, theme) {
-  gymPilotData.settings.profiles = getProfiles().map((profile) => {
-    if (profile.name === profileName) {
-      return {
-        ...profile,
-        theme
-      };
-    }
-
-    return profile;
-  });
-
-  saveData();
-  applyActiveTheme();
-  renderSettings();
-}
-
-function applyActiveTheme() {
-  const theme = getActiveTheme();
-
-  document.body.classList.remove("theme-blue", "theme-pink");
-  document.body.classList.add(`theme-${theme}`);
-}
-
-function getActiveProfile() {
-  return gymPilotData.settings.activeProfile || "Scott";
-}
-
-function getActiveTheme() {
-  return getProfileByName(getActiveProfile()).theme || "blue";
-}
-
-function getProfileByName(profileName) {
-  return getProfiles().find((profile) => profile.name === profileName) || {
-    name: profileName,
-    theme: "blue"
-  };
-}
-
-function getProfiles() {
-  return getMergedProfiles(gymPilotData.settings.profiles);
-}
-
-function getMergedProfiles(savedProfiles) {
-  const fallbackProfiles = structuredClone(defaultData.settings.profiles);
-  const profiles = Array.isArray(savedProfiles) ? savedProfiles : [];
-
-  return fallbackProfiles.map((fallbackProfile) => {
-    const savedProfile = profiles.find((profile) => profile.name === fallbackProfile.name);
-
-    return {
-      ...fallbackProfile,
-      ...(savedProfile || {})
-    };
-  });
-}
-
-function themeLabel(theme) {
-  if (theme === "pink") {
-    return "Soft Rose";
-  }
-
-  return "Blue";
-}
-
-function profileLabel(profile) {
-  return profile || "Scott";
-}
-/* ---------------------------
-   Dashboard
----------------------------- */
-
-function renderDashboard() {
-  const dashboardIntro = document.getElementById("dashboardIntro");
-const lastWorkoutSummary = document.getElementById("lastWorkoutSummary");
-const latestPbSummary = document.getElementById("latestPbSummary");
-
-  const routineCountNumber = document.getElementById("routineCountNumber");
-  const exerciseCountNumber = document.getElementById("exerciseCountNumber");
-  const workoutCountNumber = document.getElementById("workoutCountNumber");
-  const pbCountNumber = document.getElementById("pbCountNumber");
-
-  const workouts = gymPilotData.completedWorkouts || [];
-  const personalBests = gymPilotData.personalBests || [];
-  if (dashboardIntro) {
-  dashboardIntro.textContent = `Training as ${getActiveProfile()}. Choose a routine in Workout Mode to begin.`;
-}
-
-  if (lastWorkoutSummary) {
-    if (workouts.length === 0) {
-      lastWorkoutSummary.textContent = "No workouts logged yet.";
-    } else {
-      const latestWorkout = workouts[0];
-      const completedSets = latestWorkout.exercises.reduce((total, exercise) => {
-        return total + exercise.sets.filter((set) => set.completed).length;
-      }, 0);
-
-      lastWorkoutSummary.textContent = `${profileLabel(latestWorkout.profile)} • ${latestWorkout.routineName} • ${formatDate(latestWorkout.date)} • ${completedSets} completed sets`;
-    }
-  }
-
-  if (latestPbSummary) {
-    if (personalBests.length === 0) {
-      latestPbSummary.textContent = "No PBs yet.";
-    } else {
-      const latestPb = personalBests[0];
-      latestPbSummary.textContent = `${profileLabel(latestPb.profile)} • ${latestPb.exerciseName} • ${latestPb.label}: ${latestPb.displayValue}`;
-    }
-  }
-
-  if (routineCountNumber) {
-    routineCountNumber.textContent = gymPilotData.routines.length;
-  }
-
-  if (exerciseCountNumber) {
-    exerciseCountNumber.textContent = gymPilotData.exercises.length;
-  }
-
-  if (workoutCountNumber) {
-    workoutCountNumber.textContent = workouts.length;
-  }
-
-  if (pbCountNumber) {
-    pbCountNumber.textContent = personalBests.length;
-  }
-}
-
-/* ---------------------------
-   Exercise Library
----------------------------- */
-
-function setupExerciseLibrary() {
-  const form = document.getElementById("exerciseForm");
-  const cancelButton = document.getElementById("cancelEditExerciseButton");
-
-  if (!form) {
-    return;
-  }
-
-  form.addEventListener("submit", (event) => {
-    event.preventDefault();
-    saveExerciseFromForm();
-  });
-
-  if (cancelButton) {
-    cancelButton.addEventListener("click", () => {
-      resetExerciseForm();
-    });
-  }
-}
-
-function saveExerciseFromForm() {
-  const exerciseId = document.getElementById("exerciseId").value;
-
-  const exercise = {
-    id: exerciseId || crypto.randomUUID(),
-    name: document.getElementById("exerciseName").value.trim(),
-    type: document.getElementById("exerciseType").value,
-    muscleGroup: document.getElementById("exerciseMuscleGroup").value.trim(),
-    defaultSets: numberOrEmpty(document.getElementById("exerciseSets").value),
-    defaultReps: numberOrEmpty(document.getElementById("exerciseReps").value),
-    defaultWeight: document.getElementById("exerciseWeight").value.trim(),
-defaultUnit: document.getElementById("exerciseUnit").value,
-notes: document.getElementById("exerciseNotes").value.trim(),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  };
-
-  if (!exercise.name || !exercise.type) {
-    alert("Please add an exercise name and type.");
-    return;
-  }
-
-  if (exerciseId) {
-    const existingExercise = gymPilotData.exercises.find((item) => item.id === exerciseId);
-
-    if (existingExercise) {
-      exercise.createdAt = existingExercise.createdAt || new Date().toISOString();
-    }
-
-    gymPilotData.exercises = gymPilotData.exercises.map((item) => {
-      if (item.id === exerciseId) {
-        return exercise;
-      }
-
-      return item;
-    });
-  } else {
-    gymPilotData.exercises.push(exercise);
-  }
-
-  sortExercises();
-  saveData();
-
-  renderDashboard();
-  renderExerciseLibrary();
-  populateRoutineExerciseSelect();
-  renderRoutineDraftList();
-  renderRoutineBuilder();
-  resetExerciseForm();
-}
-
-function renderExerciseLibrary() {
-  const exerciseList = document.getElementById("exerciseList");
-  const librarySummary = document.getElementById("librarySummary");
-
-  if (!exerciseList) {
-    return;
-  }
-
-  const exercises = gymPilotData.exercises || [];
-
-  if (librarySummary) {
-    const count = exercises.length;
-    librarySummary.textContent = `${count} saved ${count === 1 ? "exercise" : "exercises"}`;
-  }
-
-  if (exercises.length === 0) {
-    exerciseList.innerHTML = `
-      <div class="empty-state">
-        No exercises yet. Add your first one above.
+    <header class="app-header">
+      <div>
+        <h1>GymPilot</h1>
+        <p>Plan it. Lift it. Log it.</p>
       </div>
-    `;
-    return;
-  }
 
-  exerciseList.innerHTML = exercises.map((exercise) => {
-    const stats = [];
-
-    if (exercise.defaultSets !== "") {
-      stats.push(`${exercise.defaultSets} sets`);
-    }
-
-    if (exercise.defaultReps !== "") {
-      stats.push(`${exercise.defaultReps} reps`);
-    }
-
-   if (exercise.defaultWeight) {
-  stats.push(`${escapeHTML(formatLoadWithUnit(exercise.defaultWeight, exercise.defaultUnit))}`);
-}
-
-    const statChips = stats.map((stat) => {
-      return `<span class="stat-chip">${stat}</span>`;
-    }).join("");
-
-    return `
-      <article class="exercise-item">
-        <div class="exercise-item-header">
-          <div>
-            <h4>${escapeHTML(exercise.name)}</h4>
-            <div class="exercise-meta">
-              ${escapeHTML(exercise.type || "No type")}
-              ${exercise.muscleGroup ? ` • ${escapeHTML(exercise.muscleGroup)}` : ""}
-            </div>
-          </div>
-        </div>
-
-        ${statChips ? `<div class="exercise-stats">${statChips}</div>` : ""}
-
-        ${exercise.notes ? `<div class="exercise-notes">${escapeHTML(exercise.notes)}</div>` : ""}
-
-        <div class="exercise-actions">
-          <button class="small-button" type="button" onclick="editExercise('${exercise.id}')">
-            Edit
-          </button>
-
-          <button class="danger-button" type="button" onclick="deleteExercise('${exercise.id}')">
-            Delete
-          </button>
-        </div>
-      </article>
-    `;
-  }).join("");
-}
-
-function editExercise(exerciseId) {
-  const exercise = gymPilotData.exercises.find((item) => item.id === exerciseId);
-
-  if (!exercise) {
-    return;
-  }
-
-  document.getElementById("exerciseId").value = exercise.id;
-  document.getElementById("exerciseName").value = exercise.name || "";
-  document.getElementById("exerciseType").value = exercise.type || "";
-  document.getElementById("exerciseMuscleGroup").value = exercise.muscleGroup || "";
-  document.getElementById("exerciseSets").value = exercise.defaultSets ?? "";
-  document.getElementById("exerciseReps").value = exercise.defaultReps ?? "";
-  document.getElementById("exerciseWeight").value = exercise.defaultWeight || "";
-  document.getElementById("exerciseUnit").value = exercise.defaultUnit || "kg";
-  document.getElementById("exerciseNotes").value = exercise.notes || "";
-
-  const saveButton = document.getElementById("saveExerciseButton");
-  const cancelButton = document.getElementById("cancelEditExerciseButton");
-
-  if (saveButton) {
-    saveButton.textContent = "Update exercise";
-  }
-
-  if (cancelButton) {
-    cancelButton.classList.add("visible");
-  }
-
-  document.getElementById("library").scrollIntoView({
-    behavior: "smooth",
-    block: "start"
-  });
-}
-
-function deleteExercise(exerciseId) {
-  const exercise = gymPilotData.exercises.find((item) => item.id === exerciseId);
-
-  if (!exercise) {
-    return;
-  }
-
-  const confirmed = confirm(`Delete ${exercise.name}? This will also remove it from saved routines.`);
-
-  if (!confirmed) {
-    return;
-  }
-
-  gymPilotData.exercises = gymPilotData.exercises.filter((item) => item.id !== exerciseId);
-
-  currentRoutineExercises = currentRoutineExercises.filter((item) => item.exerciseId !== exerciseId);
-
-  gymPilotData.routines = gymPilotData.routines.map((routine) => {
-    return {
-      ...routine,
-      exercises: (routine.exercises || []).filter((item) => item.exerciseId !== exerciseId)
-    };
-  });
-
-  saveData();
-
-  renderDashboard();
-  renderExerciseLibrary();
-  populateRoutineExerciseSelect();
-  populateWorkoutRoutineSelect();
-  renderRoutineDraftList();
-  renderRoutineBuilder();
-  resetExerciseForm();
-}
-
-function resetExerciseForm() {
-  const form = document.getElementById("exerciseForm");
-  const saveButton = document.getElementById("saveExerciseButton");
-  const cancelButton = document.getElementById("cancelEditExerciseButton");
-
-  if (form) {
-    form.reset();
-  }
-
-  document.getElementById("exerciseId").value = "";
-
-  if (saveButton) {
-    saveButton.textContent = "Save exercise";
-  }
-
-  if (cancelButton) {
-    cancelButton.classList.remove("visible");
-  }
-}
-
-/* ---------------------------
-   Routine Builder
----------------------------- */
-
-function setupRoutineBuilder() {
-  const form = document.getElementById("routineForm");
-  const addExerciseButton = document.getElementById("addExerciseToRoutineButton");
-  const cancelButton = document.getElementById("cancelEditRoutineButton");
-
-  if (!form) {
-    return;
-  }
-
-  form.addEventListener("submit", (event) => {
-    event.preventDefault();
-    saveRoutineFromForm();
-  });
-
-  if (addExerciseButton) {
-    addExerciseButton.addEventListener("click", () => {
-      addExerciseToRoutineDraft();
-    });
-  }
-
-  if (cancelButton) {
-    cancelButton.addEventListener("click", () => {
-      resetRoutineForm();
-    });
-  }
-}
-
-function populateRoutineExerciseSelect() {
-  const select = document.getElementById("routineExerciseSelect");
-
-  if (!select) {
-    return;
-  }
-
-  const exercises = gymPilotData.exercises || [];
-
-  if (exercises.length === 0) {
-    select.innerHTML = `<option value="">Add exercises in the Library first</option>`;
-    select.disabled = true;
-    return;
-  }
-
-  select.disabled = false;
-
-  select.innerHTML = `
-    <option value="">Choose exercise</option>
-    ${exercises.map((exercise) => {
-      return `<option value="${exercise.id}">${escapeHTML(exercise.name)}</option>`;
-    }).join("")}
-  `;
-}
-
-function addExerciseToRoutineDraft() {
-  const exerciseId = document.getElementById("routineExerciseSelect").value;
-
-  if (!exerciseId) {
-    alert("Choose an exercise to add.");
-    return;
-  }
-
-  const exercise = gymPilotData.exercises.find((item) => item.id === exerciseId);
-
-  if (!exercise) {
-    alert("Could not find that exercise.");
-    return;
-  }
-
-  const routineExercise = {
-    draftId: crypto.randomUUID(),
-    exerciseId: exercise.id,
-    name: exercise.name,
-    type: exercise.type || "",
-    muscleGroup: exercise.muscleGroup || "",
-    plannedSets: numberOrEmpty(document.getElementById("routineExerciseSets").value) || exercise.defaultSets || "",
-    plannedReps: numberOrEmpty(document.getElementById("routineExerciseReps").value) || exercise.defaultReps || "",
-    plannedWeight: document.getElementById("routineExerciseWeight").value.trim() || exercise.defaultWeight || "",
-plannedUnit: document.getElementById("routineExerciseUnit").value || exercise.defaultUnit || "kg"
-  };
-
-  currentRoutineExercises.push(routineExercise);
-
-  document.getElementById("routineExerciseSelect").value = "";
-  document.getElementById("routineExerciseSets").value = "";
-  document.getElementById("routineExerciseReps").value = "";
-  document.getElementById("routineExerciseWeight").value = "";
-  document.getElementById("routineExerciseUnit").value = "kg";
-
-  renderRoutineDraftList();
-}
-
-function renderRoutineDraftList() {
-  const draftList = document.getElementById("routineDraftList");
-
-  if (!draftList) {
-    return;
-  }
-
-  if (currentRoutineExercises.length === 0) {
-    draftList.innerHTML = `
-      <div class="empty-state">
-        No exercises added to this routine yet.
+      <div class="status-pill" id="saveStatus">
+        Ready
       </div>
-    `;
-    return;
-  }
+    </header>
 
-  draftList.innerHTML = currentRoutineExercises.map((item, index) => {
-    const detailParts = [];
+    <nav class="tab-bar" aria-label="Main navigation">
+  <button class="tab-button active" data-screen="dashboard">Dashboard</button>
+  <button class="tab-button" data-screen="workout">Workout</button>
+  <button class="tab-button" data-screen="routines">Routines</button>
+  <button class="tab-button" data-screen="library">Library</button>
+  <button class="tab-button" data-screen="history">Planner</button>
+  <button class="tab-button" data-screen="pbs">PBs</button>
+  <button class="tab-button" data-screen="nutrition">Nutrition</button>
+  <button class="tab-button" data-screen="progress">Progress</button>
+  <button class="tab-button" data-screen="moodboard">Moodboard</button>
+  <button class="tab-button" data-screen="settings">Settings</button>
+</nav>
 
-    if (item.plannedSets !== "") {
-      detailParts.push(`${item.plannedSets} sets`);
-    }
+    <main>
 
-    if (item.plannedReps !== "") {
-      detailParts.push(`${item.plannedReps} reps`);
-    }
-
-   if (item.plannedWeight || item.plannedUnit === "bodyweight") {
-  detailParts.push(`${escapeHTML(formatLoadWithUnit(item.plannedWeight, item.plannedUnit))}`);
-}
-
-    return `
-      <div class="routine-draft-item">
-        <div>
-          <strong>${index + 1}. ${escapeHTML(item.name)}</strong>
-          <div class="routine-exercise-detail">
-            ${detailParts.length ? detailParts.join(" • ") : "No plan entered"}
-          </div>
-        </div>
-
-        <button class="danger-button" type="button" onclick="removeExerciseFromRoutineDraft('${item.draftId}')">
-          Remove
-        </button>
+      <section class="screen active" id="dashboard">
+  <div class="card hero-card">
+    <div class="section-heading">
+      <div>
+        <h2>Today’s training</h2>
+        <p id="dashboardIntro">Choose a routine in Workout Mode to begin.</p>
       </div>
-    `;
-  }).join("");
-}
+    </div>
 
-function removeExerciseFromRoutineDraft(draftId) {
-  currentRoutineExercises = currentRoutineExercises.filter((item) => item.draftId !== draftId);
-  renderRoutineDraftList();
-}
+    <div class="dashboard-actions">
+      <button class="primary-button" type="button" data-jump-screen="workout">
+        Start workout
+      </button>
 
-function saveRoutineFromForm() {
-  const routineId = document.getElementById("routineId").value;
+      <button class="secondary-button" type="button" data-jump-screen="routines">
+        Build routine
+      </button>
 
-  const routine = {
-    id: routineId || crypto.randomUUID(),
-    name: document.getElementById("routineName").value.trim(),
-    focus: document.getElementById("routineFocus").value.trim(),
-    notes: document.getElementById("routineNotes").value.trim(),
-    exercises: currentRoutineExercises.map((item) => ({
-      routineExerciseId: item.routineExerciseId || crypto.randomUUID(),
-      exerciseId: item.exerciseId,
-      name: item.name,
-      type: item.type || "",
-      muscleGroup: item.muscleGroup || "",
-      plannedSets: item.plannedSets,
-plannedReps: item.plannedReps,
-plannedWeight: item.plannedWeight,
-plannedUnit: item.plannedUnit || "kg"
-    })),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  };
+      <button class="secondary-button" type="button" data-jump-screen="library">
+        Add exercise
+      </button>
+    </div>
+  </div>
 
-  if (!routine.name) {
-    alert("Please add a routine name.");
-    return;
-  }
+  <div class="dashboard-grid">
+    <div class="card dashboard-highlight-card">
+      <h3>Last workout</h3>
+      <p id="lastWorkoutSummary">No workouts logged yet.</p>
+    </div>
 
-  if (routine.exercises.length === 0) {
-    alert("Please add at least one exercise to the routine.");
-    return;
-  }
+    <div class="card dashboard-highlight-card">
+      <h3>Latest PB</h3>
+      <p id="latestPbSummary">No PBs yet.</p>
+    </div>
+  </div>
 
-  if (routineId) {
-    const existingRoutine = gymPilotData.routines.find((item) => item.id === routineId);
+  <div class="stats-grid">
+    <div class="stat-card">
+      <span class="stat-number" id="routineCountNumber">0</span>
+      <span class="stat-label">Routines</span>
+    </div>
 
-    if (existingRoutine) {
-      routine.createdAt = existingRoutine.createdAt || new Date().toISOString();
-    }
+    <div class="stat-card">
+      <span class="stat-number" id="exerciseCountNumber">0</span>
+      <span class="stat-label">Exercises</span>
+    </div>
 
-    gymPilotData.routines = gymPilotData.routines.map((item) => {
-      if (item.id === routineId) {
-        return routine;
-      }
+    <div class="stat-card">
+      <span class="stat-number" id="workoutCountNumber">0</span>
+      <span class="stat-label">Workouts</span>
+    </div>
 
-      return item;
-    });
-  } else {
-    gymPilotData.routines.push(routine);
-  }
+    <div class="stat-card">
+      <span class="stat-number" id="pbCountNumber">0</span>
+      <span class="stat-label">PBs</span>
+    </div>
+  </div>
+</section>
 
-  sortRoutines();
-  saveData();
-
-renderDashboard();
-renderRoutineBuilder();
-populateWorkoutRoutineSelect();
-populatePlannerRoutineSelect();
-renderPlanner();
-resetRoutineForm();
-}
-
-function renderRoutineBuilder() {
-  const routineList = document.getElementById("routineList");
-  const routineSummary = document.getElementById("routineSummary");
-
-  if (!routineList) {
-    return;
-  }
-
-  const routines = gymPilotData.routines || [];
-
-  if (routineSummary) {
-    const count = routines.length;
-    routineSummary.textContent = `${count} saved ${count === 1 ? "routine" : "routines"}`;
-  }
-
-  renderRoutineDraftList();
-
-  if (routines.length === 0) {
-    routineList.innerHTML = `
-      <div class="empty-state">
-        No routines yet. Build your first one above.
+      <section class="screen" id="routines">
+  <div class="card">
+    <div class="section-heading">
+      <div>
+        <h2>Routine Builder</h2>
+        <p>Create workout routines from your Exercise Library.</p>
       </div>
-    `;
-    return;
-  }
+    </div>
 
-  routineList.innerHTML = routines.map((routine) => {
-    const routineExercises = routine.exercises || [];
+    <form id="routineForm" class="form-grid">
+      <input type="hidden" id="routineId" />
 
-    const exerciseRows = routineExercises.map((item, index) => {
-      const detailParts = [];
+      <label>
+        Routine name
+        <input id="routineName" type="text" placeholder="e.g. Push Day, Pull Day, Legs" required />
+      </label>
 
-      if (item.plannedSets !== "") {
-        detailParts.push(`${item.plannedSets} sets`);
-      }
+      <label>
+        Routine focus
+        <input id="routineFocus" type="text" placeholder="e.g. Chest and triceps" />
+      </label>
 
-      if (item.plannedReps !== "") {
-        detailParts.push(`${item.plannedReps} reps`);
-      }
+      <label class="full-width">
+        Routine notes
+        <textarea id="routineNotes" rows="3" placeholder="Warm-up notes, goals, tempo, rest times, etc."></textarea>
+      </label>
 
-      if (item.plannedWeight || item.plannedUnit === "bodyweight") {
-  detailParts.push(`${escapeHTML(formatLoadWithUnit(item.plannedWeight, item.plannedUnit))}`);
-}
+      <div class="routine-exercise-builder full-width">
+        <h3>Add exercise to routine</h3>
 
-      return `
-        <div class="routine-exercise-row">
-          <strong>${index + 1}. ${escapeHTML(item.name)}</strong>
-          <div class="routine-exercise-detail">
-            ${detailParts.length ? detailParts.join(" • ") : "No plan entered"}
-          </div>
-        </div>
-      `;
-    }).join("");
-
-    return `
-      <article class="routine-item">
-        <div class="routine-item-header">
-          <div>
-            <h4>${escapeHTML(routine.name)}</h4>
-            ${routine.focus ? `<div class="routine-focus">${escapeHTML(routine.focus)}</div>` : ""}
-          </div>
-
-          <span class="stat-chip">${routineExercises.length} ${routineExercises.length === 1 ? "exercise" : "exercises"}</span>
-        </div>
-
-        <div class="routine-exercise-list">
-          ${exerciseRows}
-        </div>
-
-        ${routine.notes ? `<div class="routine-notes">${escapeHTML(routine.notes)}</div>` : ""}
-
-        <div class="routine-actions">
-          <button class="small-button" type="button" onclick="editRoutine('${routine.id}')">
-            Edit
-          </button>
-
-          <button class="danger-button" type="button" onclick="deleteRoutine('${routine.id}')">
-            Delete
-          </button>
-        </div>
-      </article>
-    `;
-  }).join("");
-}
-
-function editRoutine(routineId) {
-  const routine = gymPilotData.routines.find((item) => item.id === routineId);
-
-  if (!routine) {
-    return;
-  }
-
-  document.getElementById("routineId").value = routine.id;
-  document.getElementById("routineName").value = routine.name || "";
-  document.getElementById("routineFocus").value = routine.focus || "";
-  document.getElementById("routineNotes").value = routine.notes || "";
-
-  currentRoutineExercises = (routine.exercises || []).map((item) => ({
-  draftId: crypto.randomUUID(),
-  routineExerciseId: item.routineExerciseId || crypto.randomUUID(),
-  exerciseId: item.exerciseId,
-  name: item.name,
-  type: item.type || "",
-  muscleGroup: item.muscleGroup || "",
-  plannedSets: item.plannedSets,
-  plannedReps: item.plannedReps,
-  plannedWeight: item.plannedWeight,
-  plannedUnit: item.plannedUnit || "kg"
-}));
-
-  const saveButton = document.getElementById("saveRoutineButton");
-  const cancelButton = document.getElementById("cancelEditRoutineButton");
-
-  if (saveButton) {
-    saveButton.textContent = "Update routine";
-  }
-
-  if (cancelButton) {
-    cancelButton.classList.add("visible");
-  }
-
-  renderRoutineDraftList();
-
-  document.getElementById("routines").scrollIntoView({
-    behavior: "smooth",
-    block: "start"
-  });
-}
-
-function deleteRoutine(routineId) {
-  const routine = gymPilotData.routines.find((item) => item.id === routineId);
-
-  if (!routine) {
-    return;
-  }
-
-  const confirmed = confirm(`Delete ${routine.name}?`);
-
-  if (!confirmed) {
-    return;
-  }
-
-  gymPilotData.routines = gymPilotData.routines.filter((item) => item.id !== routineId);
-
-  if (activeWorkout && activeWorkout.routineId === routineId) {
-    activeWorkout = null;
-  }
-
-  saveData();
-
-  renderDashboard();
-  renderRoutineBuilder();
-  populateWorkoutRoutineSelect();
-  renderWorkoutMode();
-  resetRoutineForm();
-}
-
-function resetRoutineForm() {
-  const form = document.getElementById("routineForm");
-  const saveButton = document.getElementById("saveRoutineButton");
-  const cancelButton = document.getElementById("cancelEditRoutineButton");
-
-  if (form) {
-    form.reset();
-  }
-
-  document.getElementById("routineId").value = "";
-
-  currentRoutineExercises = [];
-
-  if (saveButton) {
-    saveButton.textContent = "Save routine";
-  }
-
-  if (cancelButton) {
-    cancelButton.classList.remove("visible");
-  }
-
-  renderRoutineDraftList();
-}
-
-/* ---------------------------
-   Workout Mode
----------------------------- */
-
-function setupWorkoutMode() {
-  const startButton = document.getElementById("startWorkoutButton");
-  const clearButton = document.getElementById("clearWorkoutButton");
-  const saveButton = document.getElementById("saveWorkoutButton");
-
-  if (startButton) {
-    startButton.addEventListener("click", () => {
-      startWorkout();
-    });
-  }
-
-  if (clearButton) {
-    clearButton.addEventListener("click", () => {
-      clearActiveWorkout();
-    });
-  }
-
-  if (saveButton) {
-    saveButton.addEventListener("click", () => {
-      saveCompletedWorkout();
-    });
-  }
-}
-
-function setDefaultWorkoutDate() {
-  const workoutDate = document.getElementById("workoutDate");
-
-  if (!workoutDate) {
-    return;
-  }
-
-  workoutDate.value = new Date().toISOString().slice(0, 10);
-}
-
-function populateWorkoutRoutineSelect() {
-  const select = document.getElementById("workoutRoutineSelect");
-
-  if (!select) {
-    return;
-  }
-
-  const routines = gymPilotData.routines || [];
-
-  if (routines.length === 0) {
-    select.innerHTML = `<option value="">Create a routine first</option>`;
-    select.disabled = true;
-    return;
-  }
-
-  select.disabled = false;
-
-  select.innerHTML = `
-    <option value="">Choose routine</option>
-    ${routines.map((routine) => {
-      return `<option value="${routine.id}">${escapeHTML(routine.name)}</option>`;
-    }).join("")}
-  `;
-}
-
-function startWorkout() {
-  const routineId = document.getElementById("workoutRoutineSelect").value;
-  const workoutDate = document.getElementById("workoutDate").value || new Date().toISOString().slice(0, 10);
-
-  if (!routineId) {
-    alert("Choose a routine to start.");
-    return;
-  }
-
-  const routine = gymPilotData.routines.find((item) => item.id === routineId);
-
-  if (!routine) {
-    alert("Could not find that routine.");
-    return;
-  }
-
-  activeWorkout = {
-  id: crypto.randomUUID(),
-  profile: getActiveProfile(),
-  routineId: routine.id,
-  routineName: routine.name,
-  date: workoutDate,
-  startedAt: new Date().toISOString(),
-    exercises: (routine.exercises || []).map((exercise) => {
-      const setCount = Number(exercise.plannedSets) || 1;
-
-      return {
-        workoutExerciseId: crypto.randomUUID(),
-        exerciseId: exercise.exerciseId,
-        name: exercise.name,
-        type: exercise.type || "",
-        muscleGroup: exercise.muscleGroup || "",
-        plannedSets: exercise.plannedSets,
-plannedReps: exercise.plannedReps,
-plannedWeight: exercise.plannedWeight,
-plannedUnit: exercise.plannedUnit || "kg",
-sets: Array.from({ length: setCount }, (_, index) => ({
-  setId: crypto.randomUUID(),
-  setNumber: index + 1,
-  completed: false,
-  actualReps: exercise.plannedReps || "",
-  actualWeight: exercise.plannedWeight || "",
-  actualUnit: exercise.plannedUnit || "kg"
-}))
-      };
-    })
-  };
-
-    saveActiveWorkout();
-  renderWorkoutMode();
-}
-
-function renderWorkoutMode() {
-  const title = document.getElementById("activeWorkoutTitle");
-  const summary = document.getElementById("activeWorkoutSummary");
-  const list = document.getElementById("activeWorkoutList");
-  const saveButton = document.getElementById("saveWorkoutButton");
-
-  if (!title || !summary || !list || !saveButton) {
-    return;
-  }
-
-  if (!activeWorkout) {
-    title.textContent = "No active workout";
-    summary.textContent = "Choose a routine above to begin.";
-    list.innerHTML = "";
-    saveButton.classList.remove("visible");
-    return;
-  }
-
-  title.textContent = activeWorkout.routineName;
-  summary.textContent = `Training as ${profileLabel(activeWorkout.profile)} • Workout date: ${formatDate(activeWorkout.date)}`;
-  saveButton.classList.add("visible");
-
-  list.innerHTML = activeWorkout.exercises.map((exercise) => {
-    const setRows = exercise.sets.map((set) => {
-      return `
-        <div class="workout-set-row">
-          <label class="workout-set-check">
-            <input
-              type="checkbox"
-              ${set.completed ? "checked" : ""}
-              onchange="updateWorkoutSet('${exercise.workoutExerciseId}', '${set.setId}', 'completed', this.checked)"
-            />
-            Set ${set.setNumber}
+        <div class="form-grid compact-form">
+          <label>
+            Exercise
+            <select id="routineExerciseSelect">
+              <option value="">Choose exercise</option>
+            </select>
           </label>
 
           <label>
-            Actual reps
-            <input
-              type="number"
-              min="0"
-              step="1"
-              value="${escapeHTML(set.actualReps)}"
-              oninput="updateWorkoutSet('${exercise.workoutExerciseId}', '${set.setId}', 'actualReps', this.value)"
-            />
+            Planned sets
+            <input id="routineExerciseSets" type="number" min="0" step="1" placeholder="e.g. 3" />
           </label>
 
           <label>
-            Actual weight / resistance
-            <input
-              type="text"
-              value="${escapeHTML(set.actualWeight)}"
-              oninput="updateWorkoutSet('${exercise.workoutExerciseId}', '${set.setId}', 'actualWeight', this.value)"
-            />
+            Planned reps
+            <input id="routineExerciseReps" type="number" min="0" step="1" placeholder="e.g. 8" />
           </label>
-        </div>
-      `;
-    }).join("");
 
-    return `
-      <article class="workout-exercise-card">
-        <h4>${escapeHTML(exercise.name)}</h4>
-        <div class="routine-exercise-detail">
-          Planned: ${exercise.plannedSets || "?"} sets
-          ${exercise.plannedReps ? ` • ${escapeHTML(exercise.plannedReps)} reps` : ""}
-          ${exercise.plannedWeight || exercise.plannedUnit === "bodyweight" ? ` • ${escapeHTML(formatLoadWithUnit(exercise.plannedWeight, exercise.plannedUnit))}` : ""}
-        </div>
-
-        <div class="workout-set-list">
-          ${setRows}
-        </div>
-      </article>
-    `;
-  }).join("");
-}
-
-function updateWorkoutSet(workoutExerciseId, setId, field, value) {
-  if (!activeWorkout) {
-    return;
-  }
-
-  activeWorkout.exercises = activeWorkout.exercises.map((exercise) => {
-    if (exercise.workoutExerciseId !== workoutExerciseId) {
-      return exercise;
-    }
-
-    return {
-      ...exercise,
-      sets: exercise.sets.map((set) => {
-        if (set.setId !== setId) {
-          return set;
-        }
-
-        return {
-          ...set,
-          [field]: field === "completed" ? Boolean(value) : value
-        };
-      })
-    };
-  });
-
-  saveActiveWorkout();
-  renderWorkoutMode();
-}
-
-function clearActiveWorkout() {
-  if (!activeWorkout) {
-    renderWorkoutMode();
-    return;
-  }
-
-  const confirmed = confirm("Clear the active workout? Unsaved results will be lost.");
-
-  if (!confirmed) {
-    return;
-  }
-
-   activeWorkout = null;
-  clearSavedActiveWorkout();
-  renderWorkoutMode();
-}
-
-function saveCompletedWorkout() {
-  if (!activeWorkout) {
-    alert("There is no active workout to save.");
-    return;
-  }
-
-  const completedSets = activeWorkout.exercises.reduce((total, exercise) => {
-    return total + exercise.sets.filter((set) => set.completed).length;
-  }, 0);
-
-  if (completedSets === 0) {
-    const confirmed = confirm("No sets are ticked as complete. Save anyway?");
-
-    if (!confirmed) {
-      return;
-    }
-  }
-
-  const completedWorkout = {
-    ...activeWorkout,
-    completedAt: new Date().toISOString()
-  };
-
-  const newPersonalBests = checkForPersonalBests(completedWorkout);
-
-  gymPilotData.completedWorkouts.unshift(completedWorkout);
-
-  if (newPersonalBests.length > 0) {
-    gymPilotData.personalBests.unshift(...newPersonalBests);
-  }
-
-    activeWorkout = null;
-  clearSavedActiveWorkout();
-
-  saveData();
-  renderDashboard();
-renderWorkoutMode();
-renderHistory();
-renderPersonalBests();
-renderSettings();
-
-  if (newPersonalBests.length > 0) {
-    const pbText = newPersonalBests
-      .slice(0, 5)
-      .map((pb) => `${pb.exerciseName}: ${pb.label} — ${pb.displayValue}`)
-      .join("\n");
-
-    alert(`🎉 New PB${newPersonalBests.length === 1 ? "" : "s"}!\n\n${pbText}`);
-  } else {
-    alert("Workout saved. Nice work.");
-  }
-}
-
-/* ---------------------------
-   Workout Planner
----------------------------- */
-
-function savePlannedWorkouts() {
-  localStorage.setItem(
-    "gympilot-planned-workouts-v1",
-    JSON.stringify(plannedWorkouts)
-  );
-}
-
-function formatPlannerDate(dateString) {
-  const date = new Date(`${dateString}T12:00:00`);
-
-  return date.toLocaleDateString("default", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric"
-  });
-}
-
-function getPlannerDateString(year, month, day) {
-  const date = new Date(year, month, day);
-
-  return [
-    date.getFullYear(),
-    String(date.getMonth() + 1).padStart(2, "0"),
-    String(date.getDate()).padStart(2, "0")
-  ].join("-");
-}
-
-function renderPlanner() {
-  const calendar = document.getElementById("plannerCalendarGrid");
-  const monthLabel = document.getElementById("plannerMonthLabel");
-
-  if (!calendar || !monthLabel) {
-    return;
-  }
-
-  const year = plannerCurrentMonth.getFullYear();
-  const month = plannerCurrentMonth.getMonth();
-
-  monthLabel.textContent = plannerCurrentMonth.toLocaleDateString(
-    "default",
-    {
-      month: "long",
-      year: "numeric"
-    }
-  );
-
-  calendar.innerHTML = "";
-
-  const firstDay = new Date(year, month, 1);
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-  const startingDay = (firstDay.getDay() + 6) % 7;
-
-  // Empty cells before the first day of the month
-  for (let i = 0; i < startingDay; i++) {
-    const emptyCell = document.createElement("div");
-    emptyCell.className = "planner-day planner-day-empty";
-    calendar.appendChild(emptyCell);
-  }
-
-  for (let day = 1; day <= daysInMonth; day++) {
-    const dateString = getPlannerDateString(year, month, day);
-
-    const cell = document.createElement("button");
-    cell.type = "button";
-    cell.className = "planner-day";
-    cell.dataset.date = dateString;
-
-    const todayString = getPlannerDateString(
-      new Date().getFullYear(),
-      new Date().getMonth(),
-      new Date().getDate()
-    );
-
-    if (dateString === todayString) {
-      cell.classList.add("planner-today");
-    }
-
-    const dayNumber = document.createElement("span");
-    dayNumber.className = "planner-day-number";
-    dayNumber.textContent = day;
-
-    cell.appendChild(dayNumber);
-
-    const workoutsForDay = plannedWorkouts.filter(
-      workout => workout.date === dateString
-    );
-
-    workoutsForDay.forEach(workout => {
-      const routine = (gymPilotData.routines || []).find(
-        routineItem => routineItem.id === workout.routineId
-      );
-
-      if (!routine) {
-        return;
-      }
-
-      const routineBadge = document.createElement("span");
-      routineBadge.className = "planner-routine-badge";
-      routineBadge.textContent = routine.name;
-
-      cell.appendChild(routineBadge);
-    });
-
-    cell.addEventListener("click", () => {
-      openPlannerModal(dateString);
-    });
-
-    calendar.appendChild(cell);
-  }
-}
-
-function populatePlannerRoutineSelect() {
-  const select = document.getElementById("plannerRoutineSelect");
-
-  if (!select) {
-    return;
-  }
-
-  const routines = gymPilotData.routines || [];
-
-  select.innerHTML = `
-    <option value="">Choose a routine</option>
-    ${routines.map(routine => `
-      <option value="${routine.id}">
-        ${escapeHTML(routine.name)}
-      </option>
-    `).join("")}
-  `;
-
-  if (routines.length === 0) {
-    select.innerHTML = `
-      <option value="">Create a routine first</option>
-    `;
-
-    select.disabled = true;
-  } else {
-    select.disabled = false;
-  }
-}
-
-function openPlannerModal(dateString) {
-  const modal = document.getElementById("plannerModal");
-  const selectedDate = document.getElementById("plannerSelectedDate");
-  const select = document.getElementById("plannerRoutineSelect");
-
-  if (!modal || !selectedDate || !select) {
-    return;
-  }
-
-  plannerSelectedDate = dateString;
-
-  selectedDate.textContent = formatPlannerDate(dateString);
-
-  populatePlannerRoutineSelect();
-
-  const existingWorkout = plannedWorkouts.find(
-    workout => workout.date === dateString
-  );
-
-  select.value = existingWorkout ? existingWorkout.routineId : "";
-
-  modal.classList.remove("hidden");
-}
-
-function closePlannerModal() {
-  const modal = document.getElementById("plannerModal");
-
-  if (!modal) {
-    return;
-  }
-
-  modal.classList.add("hidden");
-
-  plannerSelectedDate = null;
-}
-
-function savePlannerWorkout() {
-  const select = document.getElementById("plannerRoutineSelect");
-
-  if (!plannerSelectedDate || !select) {
-    return;
-  }
-
-  const routineId = select.value;
-
-  if (!routineId) {
-    return;
-  }
-
-  const existingIndex = plannedWorkouts.findIndex(
-    workout => workout.date === plannerSelectedDate
-  );
-
-  const plannedWorkout = {
-    id: crypto.randomUUID(),
-    date: plannerSelectedDate,
-    routineId,
-    profile: getActiveProfile()
-  };
-
-  if (existingIndex !== -1) {
-    plannedWorkouts[existingIndex] = plannedWorkout;
-  } else {
-    plannedWorkouts.push(plannedWorkout);
-  }
-
-  savePlannedWorkouts();
-
-  renderPlanner();
-
-  closePlannerModal();
-
-  updateSaveStatus("Saved");
-}
-
-function setupPlanner() {
-    const plannerTab = document.getElementById("showPlannerTab");
-const historyTab = document.getElementById("showHistoryTab");
-const plannerPanel = document.getElementById("plannerPanel");
-const historyPanel = document.getElementById("historyPanel");
-  const previousButton = document.getElementById("plannerPreviousMonth");
-  const nextButton = document.getElementById("plannerNextMonth");
-  const saveButton = document.getElementById("plannerSaveButton");
-  const cancelButton = document.getElementById("plannerCancelButton");
-  const closeButton = document.getElementById("plannerModalClose");
-  const backdrop = document.getElementById("plannerModalBackdrop");
-
-  if (plannerTab && historyTab && plannerPanel && historyPanel) {
-  plannerTab.addEventListener("click", () => {
-    plannerPanel.classList.remove("hidden");
-    historyPanel.classList.add("hidden");
-
-    plannerTab.classList.add("active");
-    historyTab.classList.remove("active");
-
-    renderPlanner();
-  });
-
-  historyTab.addEventListener("click", () => {
-    plannerPanel.classList.add("hidden");
-    historyPanel.classList.remove("hidden");
-
-    plannerTab.classList.remove("active");
-    historyTab.classList.add("active");
-
-    renderHistory();
-  });
-}
-  if (previousButton) {
-    previousButton.addEventListener("click", () => {
-      plannerCurrentMonth.setMonth(
-        plannerCurrentMonth.getMonth() - 1
-      );
-
-      renderPlanner();
-    });
-  }
-
-  if (nextButton) {
-    nextButton.addEventListener("click", () => {
-      plannerCurrentMonth.setMonth(
-        plannerCurrentMonth.getMonth() + 1
-      );
-
-      renderPlanner();
-    });
-  }
-
-  if (saveButton) {
-    saveButton.addEventListener("click", () => {
-      savePlannerWorkout();
-    });
-  }
-
-  if (cancelButton) {
-    cancelButton.addEventListener("click", () => {
-      closePlannerModal();
-    });
-  }
-
-  if (closeButton) {
-    closeButton.addEventListener("click", () => {
-      closePlannerModal();
-    });
-  }
-
-  if (backdrop) {
-    backdrop.addEventListener("click", () => {
-      closePlannerModal();
-    });
-  }
-
-  populatePlannerRoutineSelect();
-  renderPlanner();
-}
-
-function renderHistory() {
-  const historySummary = document.getElementById("historySummary");
-  const historyList = document.getElementById("historyList");
-
-  if (!historySummary || !historyList) {
-    return;
-  }
-
-  let workouts = gymPilotData.completedWorkouts || [];
-
-if (historyFilter && historyFilter.type === "range") {
-  workouts = workouts.filter(w => {
-    const d = parseSafeDate(w.date);
-    if (!d) return false;
-
-    if (historyFilter.start && d < historyFilter.start) return false;
-    if (historyFilter.end && d > historyFilter.end) return false;
-
-    return true;
-  });
-}
-
-  if (workouts.length === 0) {
-    historySummary.textContent = "No workouts logged yet.";
-    historyList.innerHTML = `
-      <div class="empty-state">
-        Complete your first workout and it will appear here.
-      </div>
-    `;
-    renderStats();
-    return;
-  }
-
-  const totalSets = workouts.reduce((total, workout) => {
-    return total + workout.exercises.reduce((exerciseTotal, exercise) => {
-      return exerciseTotal + exercise.sets.filter((set) => set.completed).length;
-    }, 0);
-  }, 0);
-
-  historySummary.textContent = `${workouts.length} completed ${workouts.length === 1 ? "workout" : "workouts"} • ${totalSets} completed sets`;
-
-  historyList.innerHTML = workouts.map((workout) => {
-    const exerciseRows = workout.exercises.map((exercise) => {
-      const completedSetRows = exercise.sets
-        .filter((set) => set.completed)
-        .map((set) => {
-          const parts = [];
-
-          if (set.actualReps !== "") {
-            parts.push(`${escapeHTML(set.actualReps)} reps`);
-          }
-
-          if (set.actualWeight !== "" || set.actualUnit === "bodyweight") {
-  parts.push(`${escapeHTML(formatLoadWithUnit(set.actualWeight, set.actualUnit))}`);
-}
-
-          return `<div class="completed-set">Set ${set.setNumber}: ${parts.length ? parts.join(" • ") : "Completed"}</div>`;
-        })
-        .join("");
-
-      return `
-        <div class="history-exercise-row">
-          <strong>${escapeHTML(exercise.name)}</strong>
-          ${completedSetRows || `<div class="completed-set">No completed sets ticked.</div>`}
-        </div>
-      `;
-    }).join("");
-
-    return `
-  <details class="history-item" ${workouts.indexOf(workout) === 0 ? "open" : ""}>
-
-    <summary class="history-item-header">
-
-      <div class="history-item-heading">
-        <h4>${escapeHTML(workout.routineName)}</h4>
-
-        <div class="history-date">
-          ${profileLabel(workout.profile)} • ${formatDate(workout.date)}
+          <label>
+  Planned load / resistance
+  <input id="routineExerciseWeight" type="text" placeholder="e.g. 60, 8, 20 mins" />
+</label>
+
+<label>
+  Planned unit
+  <select id="routineExerciseUnit">
+    <option value="kg">kg</option>
+    <option value="lb">lb</option>
+    <option value="level">level</option>
+    <option value="bodyweight">bodyweight</option>
+    <option value="time">time</option>
+    <option value="distance">distance</option>
+    <option value="other">other</option>
+  </select>
+</label>
+
+          <div class="form-actions full-width">
+            <button type="button" class="secondary-button" id="addExerciseToRoutineButton">
+              Add to routine
+            </button>
+          </div>
         </div>
 
-        <div class="history-item-count">
-          ${workout.exercises.length} exercises •
-          ${workout.exercises.reduce((total, exercise) =>
-            total + exercise.sets.filter(set => set.completed).length, 0
-          )} completed sets
-        </div>
+        <div id="routineDraftList" class="routine-draft-list"></div>
       </div>
 
-      <span class="history-expand-icon">⌄</span>
-
-    </summary>
-
-    <div class="history-item-details">
-
-      <div class="history-exercise-list">
-        ${exerciseRows}
-      </div>
-
-      <div class="history-actions">
-        <button
-          class="copy-button"
-          type="button"
-          onclick="copyWorkoutSummary('${workout.id}')"
-        >
-          Copy summary
+      <div class="form-actions full-width">
+        <button type="submit" class="primary-button" id="saveRoutineButton">
+          Save routine
         </button>
 
-        <button
-          class="share-button"
-          type="button"
-          onclick="shareWorkoutSummary('${workout.id}')"
-        >
-          Share
+        <button type="button" class="secondary-button" id="cancelEditRoutineButton">
+          Cancel edit
         </button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="section-heading">
+      <div>
+        <h3>Saved routines</h3>
+        <p id="routineSummary">No routines saved yet.</p>
+      </div>
+    </div>
+
+    <div id="routineList" class="item-list"></div>
+  </div>
+</section>
+
+      <section class="screen" id="library">
+  <div class="card">
+    <div class="section-heading">
+      <div>
+        <h2>Exercise Library</h2>
+        <p>Add weights, resistance machines, cable exercises, bodyweight moves, and cardio machines.</p>
+      </div>
+    </div>
+
+    <form id="exerciseForm" class="form-grid">
+      <input type="hidden" id="exerciseId" />
+
+      <label>
+        Exercise name
+        <input id="exerciseName" type="text" placeholder="e.g. Bench Press" required />
+      </label>
+
+      <label>
+        Type
+        <select id="exerciseType" required>
+          <option value="">Choose type</option>
+          <option value="Weights">Weights</option>
+          <option value="Resistance Machine">Resistance Machine</option>
+          <option value="Cable">Cable</option>
+          <option value="Bodyweight">Bodyweight</option>
+          <option value="Cardio">Cardio</option>
+          <option value="Other">Other</option>
+        </select>
+      </label>
+
+      <label>
+        Muscle group
+        <input id="exerciseMuscleGroup" type="text" placeholder="e.g. Chest, Back, Legs" />
+      </label>
+
+      <label>
+        Default sets
+        <input id="exerciseSets" type="number" min="0" step="1" placeholder="e.g. 3" />
+      </label>
+
+      <label>
+        Default reps
+        <input id="exerciseReps" type="number" min="0" step="1" placeholder="e.g. 10" />
+      </label>
+
+      <label>
+  Default load / resistance
+  <input id="exerciseWeight" type="text" placeholder="e.g. 40, 8, 20 mins" />
+</label>
+
+<label>
+  Default unit
+  <select id="exerciseUnit">
+    <option value="kg">kg</option>
+    <option value="lb">lb</option>
+    <option value="level">level</option>
+    <option value="bodyweight">bodyweight</option>
+    <option value="time">time</option>
+    <option value="distance">distance</option>
+    <option value="other">other</option>
+  </select>
+</label>
+
+      <label class="full-width">
+        Notes
+        <textarea id="exerciseNotes" rows="3" placeholder="Seat position, form cues, grip, machine number, etc."></textarea>
+      </label>
+
+      <div class="form-actions full-width">
+        <button type="submit" class="primary-button" id="saveExerciseButton">
+          Save exercise
+        </button>
+
+        <button type="button" class="secondary-button" id="cancelEditExerciseButton">
+          Cancel edit
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="section-heading">
+      <div>
+        <h3>Saved exercises</h3>
+        <p id="librarySummary">No exercises saved yet.</p>
+      </div>
+    </div>
+
+    <div id="exerciseList" class="item-list"></div>
+  </div>
+</section>
+
+      <section class="screen" id="workout">
+  <div class="card">
+    <div class="section-heading">
+      <div>
+        <h2>Workout Mode</h2>
+        <p>Pick a routine, tick off your sets, and save your results.</p>
+      </div>
+    </div>
+
+    <div class="form-grid">
+      <label>
+        Choose routine
+        <select id="workoutRoutineSelect">
+          <option value="">Choose routine</option>
+        </select>
+      </label>
+
+      <label>
+        Workout date
+        <input id="workoutDate" type="date" />
+      </label>
+
+      <div class="form-actions full-width">
+        <button type="button" class="primary-button" id="startWorkoutButton">
+          Start workout
+        </button>
+
+        <button type="button" class="secondary-button" id="clearWorkoutButton">
+          Clear workout
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="activeWorkoutCard">
+    <div class="section-heading">
+      <div>
+        <h3 id="activeWorkoutTitle">No active workout</h3>
+        <p id="activeWorkoutSummary">Choose a routine above to begin.</p>
+      </div>
+    </div>
+
+    <div id="activeWorkoutNotice" class="active-workout-notice hidden"></div>
+    <div id="activeWorkoutList" class="workout-list"></div>
+
+    <div class="form-actions workout-save-actions">
+      <button type="button" class="primary-button" id="saveWorkoutButton">
+        Save completed workout
+      </button>
+    </div>
+  </div>
+</section>
+<section class="screen" id="history">
+
+  <div class="card">
+
+    <div class="section-heading">
+      <div>
+        <h2>Planner & History</h2>
+        <p>Plan upcoming sessions or review your completed workouts.</p>
+      </div>
+    </div>
+
+    <!-- Planner / History Tabs -->
+    <div class="planner-history-tabs">
+      <button
+        type="button"
+        class="planner-history-tab active"
+        id="showPlannerTab"
+      >
+        Planner
+      </button>
+
+      <button
+        type="button"
+        class="planner-history-tab"
+        id="showHistoryTab"
+      >
+        History
+      </button>
+    </div>
+
+
+    <!-- =========================
+         PLANNER PANEL
+    ========================== -->
+    <div id="plannerPanel" class="planner-history-panel">
+
+      <div id="plannerContainer" class="card planner-card">
+
+        <div class="section-heading planner-heading">
+          <div>
+            <h3>Workout Planner</h3>
+            <p>Choose a date and add one of your saved routines.</p>
+          </div>
+
+          <div class="planner-month-controls">
+
+            <button
+              type="button"
+              class="secondary-button"
+              id="plannerPreviousMonth"
+            >
+              ‹
+            </button>
+
+            <strong id="plannerMonthLabel">
+              Month Year
+            </strong>
+
+            <button
+              type="button"
+              class="secondary-button"
+              id="plannerNextMonth"
+            >
+              ›
+            </button>
+
+          </div>
+        </div>
+
+
+        <div class="planner-weekdays">
+          <div>Mon</div>
+          <div>Tue</div>
+          <div>Wed</div>
+          <div>Thu</div>
+          <div>Fri</div>
+          <div>Sat</div>
+          <div>Sun</div>
+        </div>
+
+        <div
+          id="plannerCalendarGrid"
+          class="planner-calendar-grid"
+        ></div>
+
       </div>
 
     </div>
 
-  </details>
-`;
-  }).join("");
-   renderStats();
-}
-function renderHistoryFiltered(list) {
-  const container = document.getElementById("historyList");
 
-  if (!container) return;
+    <!-- =========================
+         HISTORY PANEL
+    ========================== -->
+    <div
+      id="historyPanel"
+      class="planner-history-panel hidden"
+    >
 
-  container.innerHTML = list.map(workout => `
-    <article class="card">
-      <h3>${workout.routineName}</h3>
-      <p>${formatDate(workout.date)}</p>
-    </article>
-  `).join("");
-}
+      <div class="card history-card">
 
-/* ---------------------------
-   Personal Bests
----------------------------- */
+  <div class="section-heading history-heading">
+    <div>
+      <h3>Training History</h3>
+      <p>Review your completed workouts and training progress.</p>
+    </div>
+  </div>
 
-function checkForPersonalBests(workout) {
-  const newPersonalBests = [];
+  <!-- Training Overview -->
+  <div class="history-section">
 
-  workout.exercises.forEach((exercise) => {
-    const completedSets = exercise.sets.filter((set) => set.completed);
+    <div class="history-section-title">
+      <h4>Training overview</h4>
+      <p>Choose a period to filter your workout history.</p>
+    </div>
 
-    if (completedSets.length === 0) {
-      return;
-    }
+    <div
+      id="statsSummary"
+      class="data-preview-list history-stats"
+    ></div>
 
-    const maxWeight = Math.max(
-      ...completedSets
-        .map((set) => extractFirstNumber(set.actualWeight))
-        .filter((value) => value !== null)
-    );
+  </div>
 
-    const maxReps = Math.max(
-      ...completedSets
-        .map((set) => Number(set.actualReps))
-        .filter((value) => !Number.isNaN(value))
-    );
+  <!-- Custom Date Range -->
+  <div class="history-section history-date-filter">
 
-    const completedSetCount = completedSets.length;
+    <div class="history-section-title">
+      <h4>Custom date range</h4>
+      <p>Show workouts completed between two dates.</p>
+    </div>
 
-    if (Number.isFinite(maxWeight)) {
-      const currentBestWeight = getCurrentBestValue(exercise.exerciseId, "maxWeight", workout.profile, getExerciseWorkoutUnit(exercise));
+    <div class="history-date-controls">
 
-      if (currentBestWeight === null || maxWeight > currentBestWeight) {
-        newPersonalBests.push(createPersonalBestRecord({
-          exercise,
-          workout,
-          type: "maxWeight",
-          label: "Heaviest weight / resistance",
-          value: maxWeight,
-          displayValue: formatLoadWithUnit(maxWeight, getExerciseWorkoutUnit(exercise))
-        }));
-      }
-    }
+      <label>
+        <span>From</span>
+        <input type="date" id="statsStartDate" />
+      </label>
 
-    if (Number.isFinite(maxReps)) {
-      const currentBestReps = getCurrentBestValue(exercise.exerciseId, "maxReps", workout.profile, getExerciseWorkoutUnit(exercise));
+      <label>
+        <span>To</span>
+        <input type="date" id="statsEndDate" />
+      </label>
 
-      if (currentBestReps === null || maxReps > currentBestReps) {
-        newPersonalBests.push(createPersonalBestRecord({
-          exercise,
-          workout,
-          type: "maxReps",
-          label: "Most reps in one set",
-          value: maxReps,
-          displayValue: `${maxReps} reps`
-        }));
-      }
-    }
+      <button type="button" class="primary-button history-filter-button" onclick="applyHistoryDateRange()">Apply</button>
+    </div>
 
-    const currentBestSets = getCurrentBestValue(exercise.exerciseId, "maxSets", workout.profile, getExerciseWorkoutUnit(exercise));
+  </div>
 
-    if (currentBestSets === null || completedSetCount > currentBestSets) {
-      newPersonalBests.push(createPersonalBestRecord({
-        exercise,
-        workout,
-        type: "maxSets",
-        label: "Most completed sets",
-        value: completedSetCount,
-        displayValue: `${completedSetCount} sets`
-      }));
-    }
-  });
+  <!-- Completed Workouts -->
+  <div class="history-section">
 
-  return newPersonalBests;
-}
+    <div class="history-section-title">
+      <h4>Completed workouts</h4>
+    </div>
 
-function createPersonalBestRecord({ exercise, workout, type, label, value, displayValue }) {
-  return {
-    id: crypto.randomUUID(),
-    profile: profileLabel(workout.profile),
-unit: getExerciseWorkoutUnit(exercise),
-exerciseId: exercise.exerciseId,
-exerciseName: exercise.name,
-routineId: workout.routineId,
-    routineName: workout.routineName,
-    workoutId: workout.id,
-    date: workout.date,
-    type,
-    label,
-    value,
-    displayValue,
-    achievedAt: new Date().toISOString()
-  };
-}
+    <div
+      id="historySummary"
+      class="summary-strip"
+    >
+      No workouts logged yet.
+    </div>
 
-function getCurrentBestValue(exerciseId, type, profile, unit) {
-  const activeProfile = profileLabel(profile);
-  const activeUnit = unit || "kg";
+    <div
+      id="historyList"
+      class="item-list"
+    ></div>
 
-  const matchingBest = (gymPilotData.personalBests || [])
-    .filter((pb) => {
-      const pbProfile = profileLabel(pb.profile);
-      const pbUnit = pb.unit || "kg";
+    </div> <!-- End Completed Workouts -->
 
-      return (
-        pb.exerciseId === exerciseId &&
-        pb.type === type &&
-        pbProfile === activeProfile &&
-        pbUnit === activeUnit
-      );
-    })
-    .sort((a, b) => Number(b.value) - Number(a.value))[0];
+</div> <!-- End history-card -->
 
-  if (!matchingBest) {
-    return null;
-  }
+</div> <!-- End historyPanel -->
 
-  return Number(matchingBest.value);
-}
+</div> <!-- End outer Planner & History card -->
 
-function renderPersonalBests() {
-  const pbSummary = document.getElementById("pbSummary");
-  const latestPbCelebration = document.getElementById("latestPbCelebration");
-  const pbList = document.getElementById("pbList");
 
-  if (!pbSummary || !latestPbCelebration || !pbList) {
-    return;
-  }
+<!-- =========================
+     PLAN WORKOUT MODAL
 
-  const personalBests = gymPilotData.personalBests || [];
 
-  if (personalBests.length === 0) {
-    pbSummary.textContent = "No PBs yet.";
-    latestPbCelebration.innerHTML = `
+  <!-- =========================
+       PLAN WORKOUT MODAL
+  ========================== -->
+  <div id="plannerModal" class="planner-modal hidden">
+
+    <div
+      class="planner-modal-backdrop"
+      id="plannerModalBackdrop"
+    ></div>
+
+    <div class="planner-modal-card">
+
+      <div class="section-heading">
+
+        <div>
+          <h3>Plan a workout</h3>
+          <p id="plannerSelectedDate">
+            Choose a routine for this date.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          class="secondary-button planner-modal-close"
+          id="plannerModalClose"
+        >
+          ×
+        </button>
+
+      </div>
+
+
+      <div class="planner-routine-picker">
+
+        <label for="plannerRoutineSelect">
+          Saved routine
+        </label>
+
+        <select id="plannerRoutineSelect">
+          <option value="">
+            Choose a routine
+          </option>
+        </select>
+
+      </div>
+
+
+      <div class="form-actions">
+
+        <button
+          type="button"
+          class="secondary-button"
+          id="plannerCancelButton"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="button"
+          class="primary-button"
+          id="plannerSaveButton"
+        >
+          Add to planner
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</section>
+      <section class="screen" id="pbs">
+  <div class="card">
+    <div class="section-heading">
+      <div>
+        <h2>Personal Bests</h2>
+        <p>Track your strongest sets, biggest reps, and best workout achievements.</p>
+      </div>
+    </div>
+
+    <div id="pbSummary" class="summary-strip">
+      No PBs yet.
+    </div>
+
+    <div id="latestPbCelebration" class="pb-celebration">
       <div class="pb-celebration-icon">🎉</div>
       <div>
         <h3>PBs will appear here</h3>
         <p>Complete a workout and GymPilot will check for new records.</p>
       </div>
-    `;
-
-    pbList.innerHTML = `
-      <div class="empty-state">
-        No personal bests logged yet.
-      </div>
-    `;
-    return;
-  }
-
-  const latestPb = personalBests[0];
-
-  pbSummary.textContent = `${personalBests.length} saved ${personalBests.length === 1 ? "PB" : "PBs"}`;
-
-  latestPbCelebration.innerHTML = `
-    <div class="pb-celebration-icon">🎉</div>
-    <div>
-      <h3>Latest PB: ${escapeHTML(latestPb.exerciseName)}</h3>
-      <p>${escapeHTML(profileLabel(latestPb.profile))} • ${escapeHTML(latestPb.label)} — ${escapeHTML(latestPb.displayValue)}</p>
     </div>
-  `;
-
-  pbList.innerHTML = personalBests.map((pb) => {
-    return `
-      <article class="pb-item">
-        <div class="pb-item-header">
-          <div>
-            <h4>${escapeHTML(pb.exerciseName)}</h4>
-            <div class="pb-type">${escapeHTML(pb.label)}${pb.unit ? ` • ${escapeHTML(pb.unit)}` : ""}</div>
-          </div>
-
-          <span class="pb-badge">PB</span>
-        </div>
-
-        <div class="pb-value">${escapeHTML(pb.displayValue)}</div>
-        <div class="pb-date">
-  ${escapeHTML(profileLabel(pb.profile))} • ${formatDate(pb.date)} • ${escapeHTML(pb.routineName || "Workout")}
-</div>
-      </article>
-    `;
-  }).join("");
-}
-
-/* ---------------------------
-   Workout Sharing
----------------------------- */
-
-function getWorkoutById(workoutId) {
-  return (gymPilotData.completedWorkouts || []).find((workout) => workout.id === workoutId);
-}
-
-function getWorkoutPersonalBests(workoutId) {
-  return (gymPilotData.personalBests || []).filter((pb) => pb.workoutId === workoutId);
-}
-
-function buildWorkoutSummary(workoutId) {
-  const workout = getWorkoutById(workoutId);
-
-  if (!workout) {
-    return "Workout not found.";
-  }
-
-  const lines = [];
-
-  lines.push("GymPilot Workout");
-  lines.push("");
-  lines.push(`${profileLabel(workout.profile)} completed ${workout.routineName}`);
-  lines.push(`Date: ${formatDate(workout.date)}`);
-  lines.push("");
-
-  workout.exercises.forEach((exercise) => {
-    lines.push(exercise.name);
-
-    const completedSets = exercise.sets.filter((set) => set.completed);
-
-    if (completedSets.length === 0) {
-      lines.push("No completed sets ticked.");
-      lines.push("");
-      return;
-    }
-
-    completedSets.forEach((set) => {
-      const setParts = [];
-
-      if (set.actualReps !== "") {
-        setParts.push(`${set.actualReps} reps`);
-      }
-
-      if (set.actualWeight !== "" || set.actualUnit === "bodyweight") {
-  setParts.push(formatLoadWithUnit(set.actualWeight, set.actualUnit));
-}
-
-      lines.push(`Set ${set.setNumber}: ${setParts.length ? setParts.join(" • ") : "Completed"}`);
-    });
-
-    lines.push("");
-  });
-
-  const workoutPBs = getWorkoutPersonalBests(workoutId);
-
-  if (workoutPBs.length > 0) {
-    lines.push("PBs:");
-    workoutPBs.forEach((pb) => {
-      lines.push(`🎉 ${pb.exerciseName} — ${pb.label}: ${pb.displayValue}`);
-    });
-    lines.push("");
-  }
-
-  lines.push("Logged with GymPilot");
-
-  return lines.join("\n");
-}
-
-async function copyWorkoutSummary(workoutId) {
-  const summary = buildWorkoutSummary(workoutId);
-
-  try {
-    await navigator.clipboard.writeText(summary);
-    alert("Workout summary copied.");
-  } catch (error) {
-    console.error("Could not copy workout summary:", error);
-    alert(summary);
-  }
-}
-
-async function shareWorkoutSummary(workoutId) {
-  const summary = buildWorkoutSummary(workoutId);
-  const workout = getWorkoutById(workoutId);
-
-  if (!workout) {
-    alert("Workout not found.");
-    return;
-  }
-
-  const shareData = {
-    title: `GymPilot workout — ${workout.routineName}`,
-    text: summary
-  };
-
-  if (navigator.share) {
-    try {
-      await navigator.share(shareData);
-      return;
-    } catch (error) {
-      console.error("Share cancelled or failed:", error);
-    }
-  }
-
-  await copyWorkoutSummary(workoutId);
-}
-function setHistoryFilter(type, value) {
-  const now = new Date();
-
-  if (type === "week") {
-    const start = new Date(now);
-    start.setDate(now.getDate() - 7);
-    historyFilter = { type: "range", start, end: now };
-  }
-
-  if (type === "month") {
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    historyFilter = { type: "range", start, end: now };
-  }
-
-  if (type === "year") {
-    const start = new Date(now.getFullYear(), 0, 1);
-    historyFilter = { type: "range", start, end: now };
-  }
-
-  if (type === "monthName") {
-    const parts = value.split(" ");
-    const monthName = parts[0];
-    const year = Number(parts[1]);
-
-    const monthIndex = [
-      "January", "February", "March", "April",
-      "May", "June", "July", "August",
-      "September", "October", "November", "December"
-    ].indexOf(monthName);
-
-    if (monthIndex === -1 || !Number.isInteger(year)) {
-      return;
-    }
-
-    const start = new Date(year, monthIndex, 1);
-    const end = new Date(year, monthIndex + 1, 1);
-end.setMilliseconds(-1);
-
-    historyFilter = {
-      type: "range",
-      start,
-      end
-    };
-  }
-
-  renderHistory();
-}
-function applyHistoryDateRange() {
-  const startValue = document.getElementById("statsStartDate").value;
-  const endValue = document.getElementById("statsEndDate").value;
-
-  if (!startValue && !endValue) {
-    historyFilter = null;
-    renderHistory();
-    return;
-  }
-
-  const start = startValue
-    ? new Date(`${startValue}T00:00:00`)
-    : null;
-
-  const end = endValue
-    ? new Date(`${endValue}T23:59:59.999`)
-    : null;
-
-  if (start && end && start > end) {
-    alert("The From date must be before the To date.");
-    return;
-  }
-
-  historyFilter = {
-    type: "range",
-    start,
-    end
-  };
-
-  renderHistory();
-}
-/* ---------------------------
-   Shared helpers
----------------------------- */
-
-function sortExercises() {
-  gymPilotData.exercises.sort((a, b) => {
-    return a.name.localeCompare(b.name);
-  });
-}
-
-function sortRoutines() {
-  gymPilotData.routines.sort((a, b) => {
-    return a.name.localeCompare(b.name);
-  });
-}
-
-function numberOrEmpty(value) {
-  if (value === "" || value === null || value === undefined) {
-    return "";
-  }
-
-  return Number(value);
-}
-
-function getExerciseWorkoutUnit(exercise) {
-  const firstSetWithUnit = (exercise.sets || []).find((set) => set.actualUnit);
-
-  if (firstSetWithUnit) {
-    return firstSetWithUnit.actualUnit;
-  }
-
-  return exercise.plannedUnit || "kg";
-}
-function parseWorkoutDate(dateStr) {
-  return new Date(dateStr);
-}
-function getFilteredWorkouts(startDate, endDate) {
-  const workouts = gymPilotData.completedWorkouts || [];
-
-  return workouts.filter(w => {
-    const d = new Date(w.date);
-
-    if (startDate && d < startDate) return false;
-    if (endDate && d > endDate) return false;
-
-    return true;
-  });
-}
-function groupByMonth(workouts) {
-  const map = {};
-
-  workouts.forEach(w => {
-    const d = parseSafeDate(w.date);
-    if (!d) return;
-
-    const key = d.toLocaleString('default', {
-      month: 'long',
-      year: 'numeric'
-    });
-
-    map[key] = (map[key] || 0) + 1;
-  });
-
-  return map;
-}
-// --- Streak helper ---
-function calculateStreak(workouts, profile = null) {
-  if (!workouts || workouts.length === 0) return 0;
-
-  const filtered = profile
-    ? workouts.filter(w => w.profile === profile)
-    : workouts.slice();
-
-  const sorted = filtered
-    .map(w => parseSafeDate(w.date))
-    .filter(d => d)
-    .sort((a, b) => b - a);
-
-  if (sorted.length === 0) return 0;
-
-  let streak = 1;
-  let lastDate = sorted[0];
-
-  for (let i = 1; i < sorted.length; i++) {
-    const diff = Math.round((lastDate - sorted[i]) / (1000 * 60 * 60 * 24));
-
-    if (diff === 1) {
-      streak++;
-      lastDate = sorted[i];
-    } else if (diff > 1) {
-      break;
-    } else {
-      lastDate = sorted[i];
-    }
-  }
-
-  return streak;
-}
-
-// --- Monthly chart helper ---
-function renderMonthlyChart(workouts) {
-  const ctx = document.getElementById("monthlyChart").getContext("2d");
-
-  const monthlyCounts = {};
-  workouts.forEach(w => {
-    const d = parseSafeDate(w.date);
-    if (!d) return;
-    const key = d.toLocaleString("default", { month: "short", year: "numeric" });
-    monthlyCounts[key] = (monthlyCounts[key] || 0) + 1;
-  });
-
-  const labels = Object.keys(monthlyCounts).sort((a, b) => {
-    const ad = new Date(a);
-    const bd = new Date(b);
-    return ad - bd;
-  });
-
-  const data = labels.map(l => monthlyCounts[l]);
-
-  // Assign colors: highlight active month if any
-  const backgroundColors = labels.map(l => (activeChartFilter === l ? "var(--accent)" : "#ccc"));
-
-  // Destroy previous chart if exists
-  if (window._monthlyChartInstance) {
-    window._monthlyChartInstance.destroy();
-  }
-
-  window._monthlyChartInstance = new Chart(ctx, {
-    type: "bar",
-    data: {
-      labels,
-      datasets: [{
-        label: "Workouts",
-        data,
-        backgroundColor: backgroundColors,
-      }]
-    },
-    options: {
-      responsive: true,
-      onClick: (evt, elements) => {
-        if (!elements.length) return;
-        const index = elements[0].index;
-        const monthClicked = labels[index];
-
-        // Update active filter
-        activeChartFilter = monthClicked;
-
-        // Set history filter to this month and re-render
-        const workouts = gymPilotData.completedWorkouts || [];
-        const filtered = workouts.filter(w => {
-          const d = parseSafeDate(w.date);
-          if (!d) return false;
-          const name = d.toLocaleString("default", { month: "short", year: "numeric" });
-          return name === monthClicked;
-        });
-
-        // Store temporarily and re-render history & stats
-        gymPilotData._tempHistoryFilter = filtered;
-        renderHistory();
-        renderStats();
-      },
-      scales: {
-        y: { beginAtZero: true, precision: 0 }
-      }
-    }
-  });
-}
-function renderWeeklyChart(workouts) {
-  const ctx = document.getElementById("weeklyChart").getContext("2d");
-
-  const weeklyCounts = {};
-  workouts.forEach(w => {
-    const d = parseSafeDate(w.date);
-    if (!d) return;
-
-    // Calculate year + week number
-    const firstDayOfYear = new Date(d.getFullYear(),0,1);
-    const pastDaysOfYear = (d - firstDayOfYear)/(1000*60*60*24);
-    const weekNumber = Math.ceil((pastDaysOfYear + firstDayOfYear.getDay()+1)/7);
-    const key = `${d.getFullYear()}-W${weekNumber}`;
-    weeklyCounts[key] = (weeklyCounts[key] || 0) + 1;
-  });
-
-  const labels = Object.keys(weeklyCounts).sort((a,b) => {
-    const [yearA, wA] = a.split("-W");
-    const [yearB, wB] = b.split("-W");
-    return Number(yearA)*52+Number(wA) - Number(yearB)*52-Number(wB);
-  });
-
-  const data = labels.map(l => weeklyCounts[l]);
-  const backgroundColors = labels.map(l => (activeWeekFilter===l ? "var(--accent)" : "#ccc"));
-
-  if (window._weeklyChartInstance) {
-    window._weeklyChartInstance.destroy();
-  }
-
-  window._weeklyChartInstance = new Chart(ctx, {
-    type: "bar",
-    data: { labels, datasets:[{ label:"Workouts", data, backgroundColor: backgroundColors }] },
-    options: {
-      responsive:true,
-      onClick: (evt,elements) => {
-        if(!elements.length) return;
-        const index = elements[0].index;
-        const weekClicked = labels[index];
-        activeWeekFilter = weekClicked;
-
-        // Filter History
-        const filtered = (gymPilotData.completedWorkouts||[]).filter(w=>{
-          const d = parseSafeDate(w.date);
-          if(!d) return false;
-          const firstDayOfYear = new Date(d.getFullYear(),0,1);
-          const pastDays = (d - firstDayOfYear)/(1000*60*60*24);
-          const weekNum = Math.ceil((pastDays + firstDayOfYear.getDay()+1)/7);
-          const key = `${d.getFullYear()}-W${weekNum}`;
-          return key===weekClicked;
-        });
-
-        gymPilotData._tempHistoryFilter = filtered;
-        renderHistory();
-        renderStats();
-      },
-      scales:{ y:{ beginAtZero:true, precision:0 } }
-    }
-  });
-}
-function renderStats(useCustom = false) {
-  const workouts = gymPilotData.completedWorkouts || [];
-
-  const now = new Date();
-
-  const startOfWeek = new Date(now);
-  startOfWeek.setDate(now.getDate() - 7);
-
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-  const startOfYear = new Date(now.getFullYear(), 0, 1);
-
-  let filtered = workouts;
-
-  if (useCustom) {
-    const start = document.getElementById("statsStartDate").value;
-    const end = document.getElementById("statsEndDate").value;
-
-    if (start) {
-      filtered = filtered.filter(w => new Date(w.date) >= new Date(start));
-    }
-
-    if (end) {
-      filtered = filtered.filter(w => new Date(w.date) <= new Date(end));
-    }
-  }
-
-  const week = workouts.filter(w => {
-  const d = parseSafeDate(w.date);
-  return d && d >= startOfWeek;
-}).length;
-
-const month = workouts.filter(w => {
-  const d = parseSafeDate(w.date);
-  return d && d >= startOfMonth;
-}).length;
-
-const year = workouts.filter(w => {
-  const d = parseSafeDate(w.date);
-  return d && d >= startOfYear;
-}).length;
-
-  const monthly = groupByMonth(workouts);
-
-  const container = document.getElementById("statsSummary");
-
-  if (!container) return;
-
-  container.innerHTML = `
-    <div class="data-preview-item" onclick="setHistoryFilter('week')">
-  <strong>This Week</strong>
-  <span>${week}</span>
-</div>
-
-    <div class="data-preview-item" onclick="setHistoryFilter('month')">
-  <strong>This Month</strong>
-  <span>${month}</span>
-</div>
-
-    <div class="data-preview-item" onclick="setHistoryFilter('year')">
-  <strong>This Year</strong>
-  <span>${year}</span>
-</div>
-
-    ${Object.entries(monthly).map(([k, v]) => `
-      <div class="data-preview-item" onclick="setHistoryFilter('monthName', '${k}')">
-  <strong>${k}</strong>
-  <span>${v}</span>
-</div>
-    `).join("")}
-  `;
-  // Display streak
-const currentStreak = calculateStreak(workouts);
-const streakEl = document.getElementById("streakDisplay");
-if (streakEl) streakEl.textContent = `Your current streak: ${currentStreak} day${currentStreak !== 1 ? 's' : ''}`;
-
-// Draw monthly chart
-renderMonthlyChart(workouts);
-renderWeeklyChart(workouts);
-}
-function parseSafeDate(dateStr) {
-  if (!dateStr) return null;
-
-  const iso = new Date(dateStr);
-  if (!isNaN(iso)) return iso;
-
-  const parts = dateStr.split("/");
-
-  if (parts.length === 3) {
-    const [dd, mm, yyyy] = parts;
-    return new Date(`${yyyy}-${mm}-${dd}`);
-  }
-
-  return null;
-}
-function formatLoadWithUnit(load, unit) {
-  if (!load && unit === "bodyweight") {
-    return "bodyweight";
-  }
-
-  if (!load) {
-    return "";
-  }
-
-  if (!unit) {
-    return load;
-  }
-
-  if (unit === "bodyweight") {
-    return "bodyweight";
-  }
-
-  return `${load} ${unit}`;
-}
-function extractFirstNumber(value) {
-  if (value === "" || value === null || value === undefined) {
-    return null;
-  }
-
-  const match = String(value).match(/\d+(\.\d+)?/);
-
-  if (!match) {
-    return null;
-  }
-
-  return Number(match[0]);
-}
-
-function updateSaveStatus(message) {
-  const saveStatus = document.getElementById("saveStatus");
-
-  if (!saveStatus) {
-    return;
-  }
-
-  saveStatus.textContent = message;
-
-  if (message === "Saved") {
-    setTimeout(() => {
-      saveStatus.textContent = "Ready";
-    }, 1200);
-  }
-}
-
-function formatDate(dateString) {
-  if (!dateString) {
-    return "No date";
-  }
-
-  const date = new Date(`${dateString}T00:00:00`);
-
-  return date.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric"
-  });
-}
-
-function escapeHTML(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
+
+    <div id="pbList" class="item-list"></div>
+  </div>
+</section>
+<section class="screen" id="nutrition">
+  <div class="card">
+    <div class="section-heading">
+      <div>
+        <h2>Nutrition</h2>
+        <p>Plan meals, save foods, and track calories and macros.</p>
+      </div>
+    </div>
+
+    <div class="feature-roadmap-grid">
+      <div class="feature-roadmap-card">
+        <h3>Food Library</h3>
+        <p>Save foods you use often, including calories, protein, carbs, fat, fibre, sugar and salt.</p>
+      </div>
+
+      <div class="feature-roadmap-card">
+        <h3>Meal Builder</h3>
+        <p>Create saved meals from your food library so breakfast, lunch, dinner and snacks are quick to log.</p>
+      </div>
+
+      <div class="feature-roadmap-card">
+        <h3>Daily Log</h3>
+        <p>Add foods or meals to a date and see daily totals for calories and macros.</p>
+      </div>
+
+      <div class="feature-roadmap-card">
+        <h3>Food Lookup</h3>
+        <p>Later, we can add lookup support for branded foods and supermarket items, then save them locally.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Planned nutrition data</h3>
+
+    <div class="data-preview-list">
+      <div class="data-preview-item">
+        <strong>Calories</strong>
+        <span>Daily energy intake</span>
+      </div>
+
+      <div class="data-preview-item">
+        <strong>Protein</strong>
+        <span>Useful for muscle gain and recovery</span>
+      </div>
+
+      <div class="data-preview-item">
+        <strong>Carbs</strong>
+        <span>Training fuel and daily energy</span>
+      </div>
+
+      <div class="data-preview-item">
+        <strong>Fat</strong>
+        <span>Essential fats and calorie balance</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="screen" id="progress">
+  <div class="card">
+    <div class="section-heading">
+      <div>
+        <h2>Progress</h2>
+        <p>Track bodyweight, measurements, check-ins and progress photos.</p>
+      </div>
+    </div>
+
+    <div class="feature-roadmap-grid">
+      <div class="feature-roadmap-card">
+        <h3>Bodyweight</h3>
+        <p>Log weigh-ins by date and profile, then track changes over time.</p>
+      </div>
+
+      <div class="feature-roadmap-card">
+        <h3>Measurements</h3>
+        <p>Track waist, chest, arms, thighs, hips, shoulders and other body measurements.</p>
+      </div>
+
+      <div class="feature-roadmap-card">
+        <h3>Check-ins</h3>
+        <p>Add notes about energy, sleep, soreness, motivation, training consistency and weekly progress.</p>
+      </div>
+
+      <div class="feature-roadmap-card">
+        <h3>Photos</h3>
+        <p>Later, add progress photos and compare before-and-after check-ins side by side.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Planned check-in fields</h3>
+
+    <div class="data-preview-list">
+      <div class="data-preview-item">
+        <strong>Date</strong>
+        <span>When the progress check-in was recorded</span>
+      </div>
+
+      <div class="data-preview-item">
+        <strong>Profile</strong>
+        <span>Scott or Laurie</span>
+      </div>
+
+      <div class="data-preview-item">
+        <strong>Weight</strong>
+        <span>Bodyweight in kg, with notes if needed</span>
+      </div>
+
+      <div class="data-preview-item">
+        <strong>Measurements</strong>
+        <span>Waist, chest, hips, arms, legs and other measurements</span>
+      </div>
+
+      <div class="data-preview-item">
+        <strong>Progress notes</strong>
+        <span>Weekly observations, goals and reminders</span>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="screen" id="progress">
+  <div class="card">
+    <div class="section-heading">
+      <div>
+        <h2>Progress</h2>
+        <p>Track bodyweight, measurements, check-ins and progress photos.</p>
+      </div>
+    </div>
+
+    <div class="feature-roadmap-grid">
+      <div class="feature-roadmap-card">
+        <h3>Bodyweight</h3>
+        <p>Log weigh-ins by date and profile, then track changes over time.</p>
+      </div>
+
+      <div class="feature-roadmap-card">
+        <h3>Measurements</h3>
+        <p>Track waist, chest, arms, thighs, hips, shoulders and other body measurements.</p>
+      </div>
+
+      <div class="feature-roadmap-card">
+        <h3>Check-ins</h3>
+        <p>Add notes about energy, sleep, soreness, motivation, training consistency and weekly progress.</p>
+      </div>
+
+      <div class="feature-roadmap-card">
+        <h3>Photos</h3>
+        <p>Later, add progress photos and compare before-and-after check-ins side by side.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Planned check-in fields</h3>
+
+    <div class="data-preview-list">
+      <div class="data-preview-item">
+        <strong>Date</strong>
+        <span>When the progress check-in was recorded</span>
+      </div>
+
+      <div class="data-preview-item">
+        <strong>Profile</strong>
+        <span>Scott or Laurie</span>
+      </div>
+
+      <div class="data-preview-item">
+        <strong>Weight</strong>
+        <span>Bodyweight in kg, with notes if needed</span>
+      </div>
+
+      <div class="data-preview-item">
+        <strong>Measurements</strong>
+        <span>Waist, chest, hips, arms, legs and other measurements</span>
+      </div>
+
+      <div class="data-preview-item">
+        <strong>Progress notes</strong>
+        <span>Weekly observations, goals and reminders</span>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="screen" id="moodboard">
+  <div class="card">
+    <div class="section-heading">
+      <div>
+        <h2>Mood Board / MindMap</h2>
+        <p>Capture future ideas, plans, inspiration, experiments and “wouldn’t it be good if...” thoughts.</p>
+      </div>
+    </div>
+
+    <div class="feature-roadmap-grid">
+      <div class="feature-roadmap-card">
+        <h3>Ideas</h3>
+        <p>Store quick ideas for future features, workouts, nutrition plans, app improvements and personal goals.</p>
+      </div>
+
+      <div class="feature-roadmap-card">
+        <h3>Goals</h3>
+        <p>Track bigger aims like strength targets, body composition goals, consistency goals and lifestyle changes.</p>
+      </div>
+
+      <div class="feature-roadmap-card">
+        <h3>Inspiration</h3>
+        <p>Later, save notes, images, links, quotes or examples that help shape your training and progress plan.</p>
+      </div>
+
+      <div class="feature-roadmap-card">
+        <h3>Planning</h3>
+        <p>Use this as a flexible space for rough plans before they become proper routines, meals or progress targets.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Planned Moodboard tools</h3>
+
+    <div class="data-preview-list">
+      <div class="data-preview-item">
+        <strong>Quick notes</strong>
+        <span>Capture ideas before they disappear into the void.</span>
+      </div>
+
+      <div class="data-preview-item">
+        <strong>Goal cards</strong>
+        <span>Save training, nutrition, progress and mindset goals.</span>
+      </div>
+
+      <div class="data-preview-item">
+        <strong>Future feature list</strong>
+        <span>Keep app ideas in one place so we can build them in the right order.</span>
+      </div>
+
+      <div class="data-preview-item">
+        <strong>Visual board</strong>
+        <span>Later, add images, links and inspiration tiles.</span>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="screen" id="settings">
+  <div class="card">
+    <div class="section-heading">
+      <div>
+        <h2>Settings</h2>
+        <p>Choose who is training and set each person’s colour theme.</p>
+      </div>
+    </div>
+
+    <div class="settings-profile-card">
+      <h3>Active profile</h3>
+      <p>The active profile is used for new workouts and new PBs.</p>
+
+      <label>
+        Training as
+        <select id="activeProfileSelect">
+          <option value="Scott">Scott</option>
+          <option value="Laurie">Laurie</option>
+        </select>
+      </label>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-heading">
+      <div>
+        <h3>Theme colours</h3>
+        <p>Scott and Laurie can each have their own colour scheme.</p>
+      </div>
+    </div>
+
+    <div class="form-grid">
+      <label>
+        Scott theme
+        <select id="scottThemeSelect">
+          <option value="blue">Blue</option>
+          <option value="pink">Soft Rose</option>
+        </select>
+      </label>
+
+      <label>
+        Laurie theme
+        <select id="laurieThemeSelect">
+          <option value="pink">Soft Rose</option>
+          <option value="blue">Blue</option>
+        </select>
+      </label>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Current setup</h3>
+    <div id="settingsSummary" class="summary-strip">
+      Loading settings...
+    </div>
+  </div>
+</section>
+
+    </main>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
