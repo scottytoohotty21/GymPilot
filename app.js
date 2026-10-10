@@ -1655,25 +1655,57 @@ if (historyFilter && historyFilter.type === "range") {
     }).join("");
 
     return `
-      <article class="history-item">
+  <details class="history-item" ${workouts.indexOf(workout) === 0 ? "open" : ""}>
+
+    <summary class="history-item-header">
+
+      <div class="history-item-heading">
         <h4>${escapeHTML(workout.routineName)}</h4>
-        <div class="history-date">${profileLabel(workout.profile)} • ${formatDate(workout.date)}</div>
 
-                <div class="history-exercise-list">
-          ${exerciseRows}
+        <div class="history-date">
+          ${profileLabel(workout.profile)} • ${formatDate(workout.date)}
         </div>
 
-        <div class="history-actions">
-          <button class="copy-button" type="button" onclick="copyWorkoutSummary('${workout.id}')">
-            Copy summary
-          </button>
-
-          <button class="share-button" type="button" onclick="shareWorkoutSummary('${workout.id}')">
-            Share
-          </button>
+        <div class="history-item-count">
+          ${workout.exercises.length} exercises •
+          ${workout.exercises.reduce((total, exercise) =>
+            total + exercise.sets.filter(set => set.completed).length, 0
+          )} completed sets
         </div>
-      </article>
-    `;
+      </div>
+
+      <span class="history-expand-icon">⌄</span>
+
+    </summary>
+
+    <div class="history-item-details">
+
+      <div class="history-exercise-list">
+        ${exerciseRows}
+      </div>
+
+      <div class="history-actions">
+        <button
+          class="copy-button"
+          type="button"
+          onclick="copyWorkoutSummary('${workout.id}')"
+        >
+          Copy summary
+        </button>
+
+        <button
+          class="share-button"
+          type="button"
+          onclick="shareWorkoutSummary('${workout.id}')"
+        >
+          Share
+        </button>
+      </div>
+
+    </div>
+
+  </details>
+`;
   }).join("");
    renderStats();
 }
