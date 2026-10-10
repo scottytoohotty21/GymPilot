@@ -1409,3 +1409,126 @@
     width: 100%;
   }
 }
+/* ---------------------------
+   History - Completed Workout Cards
+---------------------------- */
+
+/* Main completed workout card */
+
+.history-card .history-item {
+  background: #ffffff;
+  color: #12324a;
+  border: 1px solid #cbdbe5;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 14px rgba(16, 47, 73, 0.06);
+}
+
+/* Routine name */
+
+.history-card .history-item h4 {
+  color: #12324a;
+  font-size: 1.15rem;
+  font-weight: 900;
+  margin: 0 0 6px;
+}
+
+/* Workout date and profile */
+
+.history-card .history-date {
+  color: #536b7b;
+  font-size: 0.85rem;
+  margin-bottom: 16px;
+}
+
+/* Exercise list */
+
+.history-card .history-exercise-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Individual exercise */
+
+.history-card .history-exercise-row {
+  background: #f3f8fb;
+  border: 1px solid #d4e2ea;
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: #12324a;
+}
+
+/* Exercise name */
+
+.history-card .history-exercise-row strong {
+  display: block;
+  color: #12324a;
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+
+/* Completed sets */
+
+.history-card .completed-set {
+  color: #536b7b;
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+/* Action buttons */
+
+.history-card .history-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.history-card .copy-button {
+  background: #e7f2f9;
+  color: #12324a;
+  border: 1px solid #cbdbe5;
+  border-radius: 10px;
+  padding: 10px 16px;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.history-card .copy-button:hover {
+  background: #d8ebf6;
+  border-color: #31b9f3;
+}
+
+.history-card .share-button {
+  background: #31b9f3;
+  color: #07304a;
+  border: 1px solid #31b9f3;
+  border-radius: 10px;
+  padding: 10px 16px;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.history-card .share-button:hover {
+  background: #16a8e6;
+}
+
+/* Mobile adjustments */
+
+@media (max-width: 700px) {
+  .history-card .history-item {
+    padding: 14px;
+  }
+
+  .history-card .history-exercise-row {
+    padding: 10px 12px;
+  }
+
+  .history-card .history-actions button {
+    flex: 1;
+  }
+}
