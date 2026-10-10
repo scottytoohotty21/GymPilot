@@ -1235,3 +1235,177 @@
 .planner-history-panel {
   margin-top: 4px;
 }
+/* ---------------------------
+   History - Light GymPilot theme
+---------------------------- */
+
+#historyPanel {
+  width: 100%;
+}
+
+#historyPanel .history-card {
+  width: min(900px, 100%);
+  margin: 0 auto;
+  padding: 24px;
+  background: #eef5f9;
+  color: #12324a;
+  border: 1px solid #d4e2ea;
+  border-radius: 22px;
+}
+
+/* History headings */
+
+.history-card h3,
+.history-card h4 {
+  color: #12324a;
+}
+
+.history-card p {
+  color: #536b7b;
+}
+
+.history-heading {
+  margin-bottom: 24px;
+}
+
+/* Individual sections */
+
+.history-section {
+  margin-top: 22px;
+}
+
+.history-section + .history-section {
+  padding-top: 20px;
+  border-top: 1px solid #d4e2ea;
+}
+
+.history-section-title {
+  margin-bottom: 16px;
+}
+
+.history-section-title h4 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+}
+
+.history-section-title p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+/* Stats tiles */
+
+.history-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.history-stats .data-preview-item {
+  background: #ffffff;
+  border: 1px solid #cbdbe5;
+  border-radius: 14px;
+  padding: 16px;
+  color: #12324a;
+  cursor: pointer;
+}
+
+.history-stats .data-preview-item:hover {
+  border-color: #31b9f3;
+  background: #f7fbfd;
+}
+
+.history-stats .data-preview-item strong {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.history-stats .data-preview-item span {
+  display: block;
+  font-size: 1.6rem;
+  font-weight: 900;
+  color: #087caf;
+}
+
+/* Date controls */
+
+.history-date-controls {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.history-date-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  flex: 1 1 180px;
+  min-width: 0;
+  color: #12324a;
+  font-weight: 700;
+}
+
+.history-date-controls input[type="date"] {
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 12px;
+  background: #ffffff;
+  color: #12324a;
+  border: 1px solid #cbdbe5;
+  border-radius: 12px;
+  font: inherit;
+  color-scheme: light;
+}
+
+.history-date-controls input[type="date"]:focus {
+  outline: 2px solid #31b9f3;
+  outline-offset: 1px;
+}
+
+.history-filter-button {
+  min-height: 46px;
+}
+
+/* Completed workout summary */
+
+.history-card #historySummary {
+  background: #dceef8;
+  color: #12324a;
+  border: 1px solid #b6dcef;
+  border-radius: 12px;
+  padding: 14px;
+}
+
+/* Empty state */
+
+.history-card .empty-state {
+  background: #ffffff;
+  color: #536b7b;
+  border: 1px dashed #cbdbe5;
+  border-radius: 14px;
+  padding: 24px;
+  text-align: center;
+}
+
+/* Mobile */
+
+@media (max-width: 700px) {
+  #historyPanel .history-card {
+    padding: 16px;
+  }
+
+  .history-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .history-date-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .history-date-controls label,
+  .history-filter-button {
+    width: 100%;
+  }
+}
