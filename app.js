@@ -1615,6 +1615,7 @@ if (historyFilter && historyFilter.type === "range") {
         Complete your first workout and it will appear here.
       </div>
     `;
+    renderStats();
     return;
   }
 
