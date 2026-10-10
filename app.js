@@ -1984,37 +1984,43 @@ function setHistoryFilter(type, value) {
   if (type === "week") {
     const start = new Date(now);
     start.setDate(now.getDate() - 7);
-
     historyFilter = { type: "range", start, end: now };
   }
 
   if (type === "month") {
     const start = new Date(now.getFullYear(), now.getMonth(), 1);
-
     historyFilter = { type: "range", start, end: now };
   }
 
   if (type === "year") {
     const start = new Date(now.getFullYear(), 0, 1);
-
     historyFilter = { type: "range", start, end: now };
   }
 
   if (type === "monthName") {
-    const workouts = gymPilotData.completedWorkouts || [];
+    const parts = value.split(" ");
+    const monthName = parts[0];
+    const year = Number(parts[1]);
 
-    const filtered = workouts.filter(w => {
-      const d = parseSafeDate(w.date);
-      if (!d) return false;
+    const monthIndex = [
+      "January", "February", "March", "April",
+      "May", "June", "July", "August",
+      "September", "October", "November", "December"
+    ].indexOf(monthName);
 
-      const name = d.toLocaleString('default', { month: 'long', year: 'numeric' });
-      return name === value;
-    });
+    if (monthIndex === -1 || !Number.isInteger(year)) {
+      return;
+    }
 
-    historyFilter = null;
+    const start = new Date(year, monthIndex, 1);
+    const end = new Date(year, monthIndex + 1, 1);
+end.setMilliseconds(-1);
 
-    renderHistoryFiltered(filtered);
-    return;
+    historyFilter = {
+      type: "range",
+      start,
+      end
+    };
   }
 
   renderHistory();
