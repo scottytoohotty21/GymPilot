@@ -2057,6 +2057,37 @@ end.setMilliseconds(-1);
 
   renderHistory();
 }
+function applyHistoryDateRange() {
+  const startValue = document.getElementById("statsStartDate").value;
+  const endValue = document.getElementById("statsEndDate").value;
+
+  if (!startValue && !endValue) {
+    historyFilter = null;
+    renderHistory();
+    return;
+  }
+
+  const start = startValue
+    ? new Date(`${startValue}T00:00:00`)
+    : null;
+
+  const end = endValue
+    ? new Date(`${endValue}T23:59:59.999`)
+    : null;
+
+  if (start && end && start > end) {
+    alert("The From date must be before the To date.");
+    return;
+  }
+
+  historyFilter = {
+    type: "range",
+    start,
+    end
+  };
+
+  renderHistory();
+}
 /* ---------------------------
    Shared helpers
 ---------------------------- */
