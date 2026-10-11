@@ -604,6 +604,7 @@
   <div
     class="planner-modal-backdrop"
     id="routineExerciseEditBackdrop"
+    onclick="closeRoutineExerciseEditModal()"
   ></div>
 
   <div class="planner-modal-card">
@@ -618,6 +619,7 @@
         type="button"
         class="secondary-button planner-modal-close"
         id="routineExerciseEditClose"
+        onclick="closeRoutineExerciseEditModal()"
       >
         ×
       </button>
@@ -657,6 +659,7 @@
         type="button"
         class="secondary-button"
         id="routineExerciseEditCancel"
+        onclick="closeRoutineExerciseEditModal()"
       >
         Cancel
       </button>
@@ -665,6 +668,7 @@
         type="button"
         class="primary-button"
         id="routineExerciseEditSave"
+        onclick="saveRoutineExerciseEdit()"
       >
         Update exercise
       </button>
