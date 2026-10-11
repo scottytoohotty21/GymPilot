@@ -2088,6 +2088,14 @@ function applyHistoryDateRange() {
 
   renderHistory();
 }
+function clearHistoryFilter() {
+  historyFilter = null;
+
+  document.getElementById("statsStartDate").value = "";
+  document.getElementById("statsEndDate").value = "";
+
+  renderHistory();
+}
 /* ---------------------------
    Shared helpers
 ---------------------------- */
