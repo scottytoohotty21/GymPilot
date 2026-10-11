@@ -595,7 +595,85 @@
     </div>
 
   </div>
+<!-- =========================
+     EDIT ROUTINE EXERCISE MODAL
+========================== -->
 
+<div id="routineExerciseEditModal" class="planner-modal hidden">
+
+  <div
+    class="planner-modal-backdrop"
+    id="routineExerciseEditBackdrop"
+  ></div>
+
+  <div class="planner-modal-card">
+
+    <div class="section-heading">
+      <div>
+        <h3>Edit routine exercise</h3>
+        <p id="routineExerciseEditName"></p>
+      </div>
+
+      <button
+        type="button"
+        class="secondary-button planner-modal-close"
+        id="routineExerciseEditClose"
+      >
+        ×
+      </button>
+    </div>
+
+    <div class="routine-exercise-edit-fields">
+
+      <label>
+        Planned sets
+        <input type="number" id="routineEditSets" min="0" />
+      </label>
+
+      <label>
+        Planned reps
+        <input type="number" id="routineEditReps" min="0" />
+      </label>
+
+      <label>
+        Planned load
+        <input type="number" id="routineEditWeight" min="0" step="any" />
+      </label>
+
+      <label>
+        Unit
+        <select id="routineEditUnit">
+          <option value="kg">kg</option>
+          <option value="lb">lb</option>
+          <option value="bodyweight">Bodyweight</option>
+        </select>
+      </label>
+
+    </div>
+
+    <div class="form-actions">
+
+      <button
+        type="button"
+        class="secondary-button"
+        id="routineExerciseEditCancel"
+      >
+        Cancel
+      </button>
+
+      <button
+        type="button"
+        class="primary-button"
+        id="routineExerciseEditSave"
+      >
+        Update exercise
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
 </section>
       <section class="screen" id="pbs">
   <div class="card">
