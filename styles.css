@@ -1611,3 +1611,19 @@
   outline-offset: 5px;
   border-radius: 6px;
 }
+/* ---------------------------
+   Routine Action Buttons
+---------------------------- */
+
+.routine-actions .small-button,
+.routine-actions .danger-button {
+  min-height: 42px;
+  min-width: 90px;
+  padding: 10px 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  font-weight: 700;
+  border-radius: 10px;
+}
