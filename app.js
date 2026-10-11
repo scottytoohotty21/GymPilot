@@ -661,6 +661,32 @@ function populateRoutineExerciseSelect() {
   `;
 }
 
+function editRoutineDraftExercise(draftId) {
+  const item = currentRoutineExercises.find(
+    (exercise) => exercise.draftId === draftId
+  );
+
+  if (!item) return;
+
+  const sets = prompt("Planned sets:", item.plannedSets ?? "");
+  if (sets === null) return;
+
+  const reps = prompt("Planned reps:", item.plannedReps ?? "");
+  if (reps === null) return;
+
+  const weight = prompt("Planned load / resistance:", item.plannedWeight ?? "");
+  if (weight === null) return;
+
+  const unit = prompt("Unit (kg, lb, bodyweight, etc.):", item.plannedUnit || "kg");
+  if (unit === null) return;
+
+  item.plannedSets = numberOrEmpty(sets);
+  item.plannedReps = numberOrEmpty(reps);
+  item.plannedWeight = weight.trim();
+  item.plannedUnit = unit.trim() || "kg";
+
+  renderRoutineDraftList();
+}
 function addExerciseToRoutineDraft() {
   const exerciseId = document.getElementById("routineExerciseSelect").value;
 
@@ -739,9 +765,15 @@ function renderRoutineDraftList() {
           </div>
         </div>
 
-        <button class="danger-button" type="button" onclick="removeExerciseFromRoutineDraft('${item.draftId}')">
-          Remove
-        </button>
+        <div class="routine-draft-actions">
+  <button class="small-button" type="button" onclick="editRoutineDraftExercise('${item.draftId}')">
+    Edit
+  </button>
+
+  <button class="danger-button" type="button" onclick="removeExerciseFromRoutineDraft('${item.draftId}')">
+    Remove
+  </button>
+</div>
       </div>
     `;
   }).join("");
