@@ -889,6 +889,9 @@ function renderRoutineBuilder() {
           <button class="small-button" type="button" onclick="editRoutine('${routine.id}')">
             Edit
           </button>
+          <button class="small-button" type="button" onclick="duplicateRoutine('${routine.id}')">
+  Duplicate
+</button>
 
           <button class="danger-button" type="button" onclick="deleteRoutine('${routine.id}')">
             Delete
@@ -943,6 +946,44 @@ function editRoutine(routineId) {
   });
 }
 
+function duplicateRoutine(routineId) {
+  const original = gymPilotData.routines.find(
+    (item) => item.id === routineId
+  );
+
+  if (!original) {
+    return;
+  }
+
+  const now = new Date().toISOString();
+
+  const duplicate = {
+    ...original,
+
+    id: crypto.randomUUID(),
+
+    name: `${original.name} (Copy)`,
+
+    exercises: (original.exercises || []).map((exercise) => ({
+      ...exercise,
+      routineExerciseId: crypto.randomUUID()
+    })),
+
+    createdAt: now,
+    updatedAt: now
+  };
+
+  gymPilotData.routines.push(duplicate);
+
+  sortRoutines();
+  saveData();
+
+  renderDashboard();
+  renderRoutineBuilder();
+  populateWorkoutRoutineSelect();
+  populatePlannerRoutineSelect();
+  renderPlanner();
+}
 function deleteRoutine(routineId) {
   const routine = gymPilotData.routines.find((item) => item.id === routineId);
 
