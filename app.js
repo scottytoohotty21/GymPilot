@@ -1594,7 +1594,13 @@ function renderHistory() {
     return;
   }
 
-  let workouts = gymPilotData.completedWorkouts || [];
+  let workouts = [...(gymPilotData.completedWorkouts || [])]
+  .sort((a, b) => {
+    const dateA = parseSafeDate(a.date);
+    const dateB = parseSafeDate(b.date);
+
+    return (dateB?.getTime() || 0) - (dateA?.getTime() || 0);
+  });
 
 if (historyFilter && historyFilter.type === "range") {
   workouts = workouts.filter(w => {
