@@ -1366,6 +1366,21 @@
 .history-filter-button {
   min-height: 46px;
 }
+/* Clear History filter button */
+
+.history-date-controls .secondary-button {
+  background: #ffffff;
+  color: #12324a;
+  border: 1px solid #b6dcef;
+  border-radius: 12px;
+  padding: 10px 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.history-date-controls .secondary-button:hover {
+  background: #dceef8;
+}
 
 /* Completed workout summary */
 
