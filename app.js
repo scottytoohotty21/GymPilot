@@ -661,6 +661,8 @@ function populateRoutineExerciseSelect() {
   `;
 }
 
+let editingRoutineDraftId = null;
+
 function editRoutineDraftExercise(draftId) {
   const item = currentRoutineExercises.find(
     (exercise) => exercise.draftId === draftId
@@ -668,26 +670,47 @@ function editRoutineDraftExercise(draftId) {
 
   if (!item) return;
 
-  const sets = prompt("Planned sets:", item.plannedSets ?? "");
-  if (sets === null) return;
+  const modal = document.getElementById("routineExerciseEditModal");
 
-  const reps = prompt("Planned reps:", item.plannedReps ?? "");
-  if (reps === null) return;
+  if (!modal) return;
 
-  const weight = prompt("Planned load / resistance:", item.plannedWeight ?? "");
-  if (weight === null) return;
+  editingRoutineDraftId = draftId;
 
-  const unit = prompt("Unit (kg, lb, bodyweight, etc.):", item.plannedUnit || "kg");
-  if (unit === null) return;
+  document.getElementById("routineExerciseEditName").textContent = item.name;
+  document.getElementById("routineEditSets").value = item.plannedSets ?? "";
+  document.getElementById("routineEditReps").value = item.plannedReps ?? "";
+  document.getElementById("routineEditWeight").value = item.plannedWeight ?? "";
+  document.getElementById("routineEditUnit").value = item.plannedUnit || "kg";
 
-  item.plannedSets = numberOrEmpty(sets);
-  item.plannedReps = numberOrEmpty(reps);
-  item.plannedWeight = weight.trim();
-  item.plannedUnit = unit.trim() || "kg";
+  modal.classList.remove("hidden");
+function closeRoutineExerciseEditModal() {
+  document.getElementById("routineExerciseEditModal").classList.add("hidden");
+  editingRoutineDraftId = null;
+}
+
+function saveRoutineExerciseEdit() {
+  const item = currentRoutineExercises.find(
+    (exercise) => exercise.draftId === editingRoutineDraftId
+  );
+
+  if (!item) return;
+
+  item.plannedSets = numberOrEmpty(
+    document.getElementById("routineEditSets").value
+  );
+
+  item.plannedReps = numberOrEmpty(
+    document.getElementById("routineEditReps").value
+  );
+
+  item.plannedWeight = document.getElementById("routineEditWeight").value.trim();
+  item.plannedUnit = document.getElementById("routineEditUnit").value || "kg";
 
   renderRoutineDraftList();
+  closeRoutineExerciseEditModal();
 }
-function addExerciseToRoutineDraft() {
+
+}function addExerciseToRoutineDraft() {
   const exerciseId = document.getElementById("routineExerciseSelect").value;
 
   if (!exerciseId) {
