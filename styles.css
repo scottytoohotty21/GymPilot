@@ -1364,7 +1364,13 @@
 }
 
 .history-filter-button {
+  height: 46px;
   min-height: 46px;
+  align-self: flex-end;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
 }
 /* Clear History filter button */
 
