@@ -664,6 +664,8 @@ function populateRoutineExerciseSelect() {
 let editingRoutineDraftId = null;
 
 function editRoutineDraftExercise(draftId) {
+    alert("Exercise Edit button is connected!");
+    
   const item = currentRoutineExercises.find(
     (exercise) => exercise.draftId === draftId
   );
