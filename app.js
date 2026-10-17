@@ -1313,8 +1313,11 @@ function updateWorkoutSet(workoutExerciseId, setId, field, value) {
     };
   });
 
-  saveActiveWorkout();
-  renderWorkoutMode();
+    saveActiveWorkout();
+
+  if (field === "completed") {
+    renderWorkoutMode();
+  }
 }
 
 function clearActiveWorkout() {
