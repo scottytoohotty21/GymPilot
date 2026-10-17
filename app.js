@@ -664,8 +664,7 @@ function populateRoutineExerciseSelect() {
 let editingRoutineDraftId = null;
 
 function editRoutineDraftExercise(draftId) {
-    alert("Exercise Edit button is connected!");
-    
+   
   const item = currentRoutineExercises.find(
     (exercise) => exercise.draftId === draftId
   );
@@ -674,7 +673,12 @@ function editRoutineDraftExercise(draftId) {
 
   const modal = document.getElementById("routineExerciseEditModal");
 
-  if (!modal) return;
+if (!modal) {
+  alert("Modal NOT found!");
+  return;
+}
+
+alert("Modal found!");
 
   editingRoutineDraftId = draftId;
 
