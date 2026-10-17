@@ -1627,3 +1627,12 @@
   font-weight: 700;
   border-radius: 10px;
 }
+/* =========================
+   SAVED ROUTINES SCROLL AREA
+========================= */
+
+#routineList {
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
