@@ -678,7 +678,6 @@ if (!modal) {
   return;
 }
 
-alert("Modal found!");
 
   editingRoutineDraftId = draftId;
 
