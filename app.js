@@ -683,6 +683,8 @@ function editRoutineDraftExercise(draftId) {
   document.getElementById("routineEditUnit").value = item.plannedUnit || "kg";
 
   modal.classList.remove("hidden");
+}
+
 function closeRoutineExerciseEditModal() {
   document.getElementById("routineExerciseEditModal").classList.add("hidden");
   editingRoutineDraftId = null;
@@ -710,7 +712,7 @@ function saveRoutineExerciseEdit() {
   closeRoutineExerciseEditModal();
 }
 
-}function addExerciseToRoutineDraft() {
+function addExerciseToRoutineDraft() {
   const exerciseId = document.getElementById("routineExerciseSelect").value;
 
   if (!exerciseId) {
