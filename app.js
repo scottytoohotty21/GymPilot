@@ -2615,8 +2615,10 @@ const year = workouts.filter(w => {
 </div>
     `).join("")}
   `;
+  alert("Stats summary built!");
   // Display streak
 const currentStreak = calculateStreak(workouts);
+alert("Streak calculated!");
 const streakEl = document.getElementById("streakDisplay");
 if (streakEl) streakEl.textContent = `Your current streak: ${currentStreak} day${currentStreak !== 1 ? 's' : ''}`;
 
