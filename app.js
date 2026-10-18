@@ -1439,6 +1439,7 @@ document.getElementById("workoutCelebrationClose")
   ?.addEventListener("click", closeWorkoutCelebration);
 
 function saveCompletedWorkout() {
+    alert("START of saveCompletedWorkout reached!");
   if (!activeWorkout) {
     alert("There is no active workout to save.");
     return;
