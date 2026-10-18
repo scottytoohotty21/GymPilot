@@ -1474,6 +1474,7 @@ function saveCompletedWorkout() {
   clearSavedActiveWorkout();
 
   saveData();
+    alert("Workout data saved — starting screen refresh!");
   renderDashboard();
 renderWorkoutMode();
 renderHistory();
