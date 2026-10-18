@@ -2626,6 +2626,7 @@ if (streakEl) streakEl.textContent = `Your current streak: ${currentStreak} day$
 
 // Draw monthly chart
 renderMonthlyChart(workouts);
+alert("Monthly chart finished!");
 renderWeeklyChart(workouts);
 }
 function parseSafeDate(dateStr) {
