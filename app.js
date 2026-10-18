@@ -2701,3 +2701,19 @@ function escapeHTML(value) {
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
 }
+
+/* ---------------------------
+   GymPilot Offline Support
+---------------------------- */
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js")
+      .then(() => {
+        console.log("GymPilot offline support registered.");
+      })
+      .catch((error) => {
+        console.error("GymPilot offline registration failed:", error);
+      });
+  });
+}
