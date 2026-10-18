@@ -1483,6 +1483,7 @@ function saveCompletedWorkout() {
   saveData();
     alert("Workout data saved — starting screen refresh!");
   renderDashboard();
+    alert("Dashboard refreshed!");
 renderWorkoutMode();
 renderHistory();
 renderPersonalBests();
