@@ -1436,7 +1436,7 @@ function launchWorkoutConfetti() {
 
 document.getElementById("workoutCelebrationClose")
   ?.addEventListener("click", closeWorkoutCelebration);
-  
+
 function saveCompletedWorkout() {
   if (!activeWorkout) {
     alert("There is no active workout to save.");
@@ -1478,16 +1478,7 @@ renderHistory();
 renderPersonalBests();
 renderSettings();
 
-  if (newPersonalBests.length > 0) {
-    const pbText = newPersonalBests
-      .slice(0, 5)
-      .map((pb) => `${pb.exerciseName}: ${pb.label} — ${pb.displayValue}`)
-      .join("\n");
-
-    alert(`🎉 New PB${newPersonalBests.length === 1 ? "" : "s"}!\n\n${pbText}`);
-  } else {
-    alert("Workout saved. Nice work.");
-  }
+    showWorkoutCelebration(completedWorkout, newPersonalBests);
 }
 
 /* ---------------------------
