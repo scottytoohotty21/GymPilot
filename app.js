@@ -1481,6 +1481,7 @@ function saveCompletedWorkout() {
   clearSavedActiveWorkout();
 
   saveData();
+  showWorkoutCelebration(completedWorkout, newPersonalBests);
     alert("Workout data saved — starting screen refresh!");
   renderDashboard();
     alert("Dashboard refreshed!");
@@ -1492,8 +1493,7 @@ renderPersonalBests();
 alert("Reached renderSettings!");
 renderSettings();
 
-    showWorkoutCelebration(completedWorkout, newPersonalBests);
-}
+  }
 
 /* ---------------------------
    Workout Planner
