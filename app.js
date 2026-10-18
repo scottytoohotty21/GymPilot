@@ -1353,6 +1353,7 @@ const workoutCongratulations = [
 ];
 
 function showWorkoutCelebration(completedWorkout, newPersonalBests) {
+    alert("Celebration function reached!");
   const modal = document.getElementById("workoutCelebrationModal");
   if (!modal) return;
 
