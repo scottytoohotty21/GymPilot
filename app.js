@@ -1477,6 +1477,7 @@ function saveCompletedWorkout() {
 renderWorkoutMode();
 renderHistory();
 renderPersonalBests();
+alert("Reached renderSettings!");
 renderSettings();
 
     showWorkoutCelebration(completedWorkout, newPersonalBests);
