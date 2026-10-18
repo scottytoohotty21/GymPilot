@@ -1353,7 +1353,6 @@ const workoutCongratulations = [
 ];
 
 function showWorkoutCelebration(completedWorkout, newPersonalBests) {
-    alert("Celebration function reached!");
   const modal = document.getElementById("workoutCelebrationModal");
   if (!modal) return;
 
@@ -1439,10 +1438,9 @@ document.getElementById("workoutCelebrationClose")
   ?.addEventListener("click", closeWorkoutCelebration);
 
 function saveCompletedWorkout() {
-    alert("START of saveCompletedWorkout reached!");
-  if (!activeWorkout) {
-    alert("There is no active workout to save.");
-    return;
+      if (!activeWorkout) {
+        alert("There is no active workout to save.");
+        return;
   }
 
   const completedSets = activeWorkout.exercises.reduce((total, exercise) => {
@@ -1482,15 +1480,10 @@ function saveCompletedWorkout() {
 
   saveData();
   showWorkoutCelebration(completedWorkout, newPersonalBests);
-    alert("Workout data saved — starting screen refresh!");
-  renderDashboard();
-    alert("Dashboard refreshed!");
-renderWorkoutMode();
-alert("Workout Mode refreshed!");
+      renderDashboard();
+    renderWorkoutMode();
 renderHistory();
-alert("History refreshed!");
 renderPersonalBests();
-alert("Reached renderSettings!");
 renderSettings();
 
   }
@@ -1925,11 +1918,9 @@ if (historyFilter && historyFilter.type === "range") {
 `;
    }).join("");
 
-  alert("History cards built successfully!");
-
+  
   renderStats();
 
-  alert("History stats refreshed!");
 }
 function renderHistoryFiltered(list) {
   const container = document.getElementById("historyList");
@@ -2586,10 +2577,8 @@ const year = workouts.filter(w => {
   return d && d >= startOfYear;
 }).length;
 
-alert("About to group months!");
   const monthly = groupByMonth(workouts);
-  alert("Months grouped successfully!");
-
+ 
   const container = document.getElementById("statsSummary");
 
   if (!container) return;
@@ -2617,16 +2606,13 @@ alert("About to group months!");
 </div>
     `).join("")}
   `;
-  alert("Stats summary built!");
-  // Display streak
+   // Display streak
 const currentStreak = calculateStreak(workouts);
-alert("Streak calculated!");
 const streakEl = document.getElementById("streakDisplay");
 if (streakEl) streakEl.textContent = `Your current streak: ${currentStreak} day${currentStreak !== 1 ? 's' : ''}`;
 
 // Draw monthly chart
 renderMonthlyChart(workouts);
-alert("Monthly chart finished!");
 renderWeeklyChart(workouts);
 }
 function parseSafeDate(dateStr) {
