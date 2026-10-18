@@ -1487,6 +1487,7 @@ function saveCompletedWorkout() {
 renderWorkoutMode();
 alert("Workout Mode refreshed!");
 renderHistory();
+alert("History refreshed!");
 renderPersonalBests();
 alert("Reached renderSettings!");
 renderSettings();
