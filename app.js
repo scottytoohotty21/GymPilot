@@ -2586,7 +2586,9 @@ const year = workouts.filter(w => {
   return d && d >= startOfYear;
 }).length;
 
+alert("About to group months!");
   const monthly = groupByMonth(workouts);
+  alert("Months grouped successfully!");
 
   const container = document.getElementById("statsSummary");
 
