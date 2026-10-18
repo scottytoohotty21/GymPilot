@@ -1462,7 +1462,14 @@ function saveCompletedWorkout() {
     completedAt: new Date().toISOString()
   };
 
-  const newPersonalBests = checkForPersonalBests(completedWorkout);
+    let newPersonalBests;
+
+  try {
+    newPersonalBests = checkForPersonalBests(completedWorkout);
+  } catch (error) {
+    alert("PB CHECK ERROR: " + error.message);
+    throw error;
+  }
 
   gymPilotData.completedWorkouts.unshift(completedWorkout);
 
