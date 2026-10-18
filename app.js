@@ -1337,6 +1337,106 @@ function clearActiveWorkout() {
   renderWorkoutMode();
 }
 
+/* =========================
+   WORKOUT CELEBRATION
+========================= */
+
+const workoutCongratulations = [
+  "Workout smashed! 💪",
+  "Another one in the books! 🔥",
+  "Outstanding effort! 🏆",
+  "You absolute machine! 💥",
+  "Stronger every session! 💪",
+  "That's how it's done! 🎯",
+  "You showed up and delivered! 👊",
+  "Brilliant work. Keep it going! ⭐"
+];
+
+function showWorkoutCelebration(completedWorkout, newPersonalBests) {
+  const modal = document.getElementById("workoutCelebrationModal");
+  if (!modal) return;
+
+  const exercises = completedWorkout.exercises || [];
+
+  const completedSets = exercises.reduce((total, exercise) => {
+    return total + exercise.sets.filter((set) => set.completed).length;
+  }, 0);
+
+  const message = workoutCongratulations[
+    Math.floor(Math.random() * workoutCongratulations.length)
+  ];
+
+  document.getElementById("workoutCelebrationTitle").textContent =
+    "Workout complete! 🎉";
+
+  document.getElementById("workoutCelebrationMessage").textContent = message;
+
+  document.getElementById("celebrationExercises").textContent =
+    exercises.length;
+
+  document.getElementById("celebrationSets").textContent =
+    completedSets;
+
+  document.getElementById("celebrationPBCount").textContent =
+    newPersonalBests.length;
+
+  const pbSection = document.getElementById("celebrationPBSection");
+  const pbList = document.getElementById("celebrationPBList");
+
+  if (newPersonalBests.length > 0) {
+    pbList.innerHTML = newPersonalBests.map((pb) => `
+      <div class="celebration-pb-item">
+        🏆 ${escapeHTML(pb.exerciseName)}:
+        ${escapeHTML(pb.label)} —
+        ${escapeHTML(pb.displayValue)}
+      </div>
+    `).join("");
+
+    pbSection.classList.remove("hidden");
+  } else {
+    pbList.innerHTML = "";
+    pbSection.classList.add("hidden");
+  }
+
+  modal.classList.remove("hidden");
+  launchWorkoutConfetti();
+}
+
+function closeWorkoutCelebration() {
+  const modal = document.getElementById("workoutCelebrationModal");
+  if (modal) modal.classList.add("hidden");
+
+  const confetti = document.getElementById("workoutConfetti");
+  if (confetti) confetti.innerHTML = "";
+}
+
+function launchWorkoutConfetti() {
+  const container = document.getElementById("workoutConfetti");
+  if (!container) return;
+
+  container.innerHTML = "";
+
+  const colors = [
+    "#ffcc00", "#ff6b6b", "#4ecdc4",
+    "#6c5ce7", "#74b9ff", "#fd79a8"
+  ];
+
+  for (let i = 0; i < 55; i++) {
+    const piece = document.createElement("span");
+    piece.className = "workout-confetti-piece";
+
+    piece.style.left = `${Math.random() * 100}%`;
+    piece.style.backgroundColor = colors[i % colors.length];
+    piece.style.animationDelay = `${Math.random() * 1.2}s`;
+    piece.style.animationDuration = `${2 + Math.random() * 2}s`;
+
+    container.appendChild(piece);
+  }
+}
+
+document.getElementById("workoutCelebrationClose")
+  ?.addEventListener("click", closeWorkoutCelebration);
+  
 function saveCompletedWorkout() {
   if (!activeWorkout) {
     alert("There is no active workout to save.");
