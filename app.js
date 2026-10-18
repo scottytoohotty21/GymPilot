@@ -1923,8 +1923,13 @@ if (historyFilter && historyFilter.type === "range") {
 
   </details>
 `;
-  }).join("");
-   renderStats();
+   }).join("");
+
+  alert("History cards built successfully!");
+
+  renderStats();
+
+  alert("History stats refreshed!");
 }
 function renderHistoryFiltered(list) {
   const container = document.getElementById("historyList");
