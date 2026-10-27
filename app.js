@@ -1,3 +1,39 @@
+
+function exportGymPilotBackup() {
+  const savedData = localStorage.getItem("gympilot-data-v1");
+  const activeWorkout = localStorage.getItem("gympilot-active-workout-v1");
+
+  if (!savedData) {
+    alert("No GymPilot data found to back up.");
+    return;
+  }
+
+  const backup = {
+    app: "GymPilot",
+    backupVersion: 1,
+    exportedAt: new Date().toISOString(),
+    data: JSON.parse(savedData),
+    activeWorkout: activeWorkout ? JSON.parse(activeWorkout) : null
+  };
+
+  const blob = new Blob(
+    [JSON.stringify(backup, null, 2)],
+    { type: "application/json" }
+  );
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = `GymPilot-Backup-${new Date().toISOString().slice(0, 10)}.json`;
+
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
 const STORAGE_KEY = "gympilot-data-v1";
 const ACTIVE_WORKOUT_STORAGE_KEY = "gympilot-active-workout-v1";
 
@@ -190,6 +226,11 @@ function setupSettings() {
   const activeProfileSelect = document.getElementById("activeProfileSelect");
   const scottThemeSelect = document.getElementById("scottThemeSelect");
   const laurieThemeSelect = document.getElementById("laurieThemeSelect");
+  const exportBackupBtn = document.getElementById("exportBackupBtn");
+
+if (exportBackupBtn) {
+  exportBackupBtn.addEventListener("click", exportGymPilotBackup);
+}
 
   if (activeProfileSelect) {
     activeProfileSelect.addEventListener("change", () => {
