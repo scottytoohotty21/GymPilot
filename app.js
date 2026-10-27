@@ -232,6 +232,17 @@ if (exportBackupBtn) {
   exportBackupBtn.addEventListener("click", exportGymPilotBackup);
 }
 
+const restoreBackupBtn = document.getElementById("restoreBackupBtn");
+const restoreBackupFile = document.getElementById("restoreBackupFile");
+
+if (restoreBackupBtn && restoreBackupFile) {
+  restoreBackupBtn.addEventListener("click", () => {
+    restoreBackupFile.value = "";
+    restoreBackupFile.click();
+  });
+}
+
+
   if (activeProfileSelect) {
     activeProfileSelect.addEventListener("change", () => {
       gymPilotData.settings.activeProfile = activeProfileSelect.value;
