@@ -34,6 +34,65 @@ function exportGymPilotBackup() {
   setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
+async function restoreGymPilotBackup(file) {
+  if (!file) return;
+
+  let backup;
+
+  try {
+    backup = JSON.parse(await file.text());
+  } catch (error) {
+    alert("This file could not be read as a JSON backup.");
+    return;
+  }
+
+  if (
+    !backup ||
+    backup.app !== "GymPilot" ||
+    backup.backupVersion !== 1 ||
+    !backup.data ||
+    typeof backup.data !== "object" ||
+    Array.isArray(backup.data)
+  ) {
+    alert("This is not a recognised GymPilot backup file.");
+    return;
+  }
+
+  const confirmed = confirm(
+    "RESTORE GYMPILOT BACKUP?\n\n" +
+    "This will REPLACE all existing GymPilot data " +
+    "in this installation, including exercises, " +
+    "routines, workouts, planner and PBs.\n\n" +
+    "Continue?"
+  );
+
+  if (!confirmed) return;
+
+  try {
+    const savedData = JSON.stringify(backup.data);
+    const savedWorkout = backup.activeWorkout == null
+      ? null
+      : JSON.stringify(backup.activeWorkout);
+
+    localStorage.setItem("gympilot-data-v1", savedData);
+
+    if (savedWorkout === null) {
+      localStorage.removeItem("gympilot-active-workout-v1");
+    } else {
+      localStorage.setItem(
+        "gympilot-active-workout-v1",
+        savedWorkout
+      );
+    }
+
+    alert("GymPilot backup restored! The app will now reload.");
+    window.location.reload();
+  } catch (error) {
+    alert("Restore failed. Your data may not have been fully restored.");
+    console.error("GymPilot restore error:", error);
+  }
+}
+
 const STORAGE_KEY = "gympilot-data-v1";
 const ACTIVE_WORKOUT_STORAGE_KEY = "gympilot-active-workout-v1";
 
@@ -241,6 +300,17 @@ if (restoreBackupBtn && restoreBackupFile) {
     restoreBackupFile.click();
   });
 }
+
+if (restoreBackupFile) {
+  restoreBackupFile.addEventListener("change", () => {
+    const file = restoreBackupFile.files[0];
+
+    if (file) {
+      restoreGymPilotBackup(file);
+    }
+  });
+}
+
 
 
   if (activeProfileSelect) {
