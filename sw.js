@@ -46,9 +46,22 @@ self.addEventListener("fetch", (event) => {
   return;
 }
 
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      return cached || fetch(event.request);
+  
+event.respondWith(
+  fetch(event.request)
+    .then((response) => {
+      if (response.ok && response.type === "basic") {
+        const responseCopy = response.clone();
+
+        event.waitUntil(
+          caches.open(CACHE_NAME).then((cache) => {
+            return cache.put(event.request, responseCopy);
+          })
+        );
+      }
+
+      return response;
     })
-  );
+    .catch(() => caches.match(event.request))
+);
 });
