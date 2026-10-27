@@ -5,8 +5,11 @@ const APP_FILES = [
   "./",
   "./index.html",
   "./styles.css",
-  "./app.js",
-  "./manifest.json"
+    "./app.js",
+  "./manifest.json",
+  "./gympilot-icon-180.png",
+  "./gympilot-icon-192.png",
+  "./gympilot-icon-512.png"
 ];
 
 self.addEventListener("install", (event) => {
