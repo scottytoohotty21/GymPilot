@@ -993,6 +993,38 @@
       </label>
     </div>
   </div>
+  
+<div class="card">
+  <div class="section-heading">
+    <div>
+      <h3>Backup &amp; Restore</h3>
+      <p>Keep a safe copy of your GymPilot data.</p>
+    </div>
+  </div>
+
+  <p>
+    Export your exercises, routines, workouts,
+    planner and personal bests to a backup file.
+  </p>
+
+  <div class="form-actions">
+    <button type="button" id="exportBackupBtn">
+      Export Backup
+    </button>
+
+    <button type="button" id="restoreBackupBtn">
+      Restore Backup
+    </button>
+  </div>
+
+  <input
+    type="file"
+    id="restoreBackupFile"
+    accept=".json,application/json"
+    hidden
+  />
+</div>
+
 
   <div class="card">
     <h3>Current setup</h3>
