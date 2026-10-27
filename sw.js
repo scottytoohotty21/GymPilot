@@ -1,5 +1,5 @@
 
-const CACHE_NAME = "gympilot-offline-v2";
+const CACHE_NAME = "gympilot-offline-v3";
 
 const APP_FILES = [
   "./",
