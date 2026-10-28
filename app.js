@@ -2,6 +2,7 @@
 function exportGymPilotBackup() {
   const savedData = localStorage.getItem("gympilot-data-v1");
   const activeWorkout = localStorage.getItem("gympilot-active-workout-v1");
+  const plannedWorkouts = localStorage.getItem("gympilot-planned-workouts-v1");
 
   if (!savedData) {
     alert("No GymPilot data found to back up.");
@@ -12,8 +13,11 @@ function exportGymPilotBackup() {
     app: "GymPilot",
     backupVersion: 1,
     exportedAt: new Date().toISOString(),
-    data: JSON.parse(savedData),
-    activeWorkout: activeWorkout ? JSON.parse(activeWorkout) : null
+    
+data: JSON.parse(savedData),
+activeWorkout: activeWorkout ? JSON.parse(activeWorkout) : null,
+plannedWorkouts: plannedWorkouts ? JSON.parse(plannedWorkouts) : []
+
   };
 
   const blob = new Blob(
