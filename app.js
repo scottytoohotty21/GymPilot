@@ -89,6 +89,13 @@ async function restoreGymPilotBackup(file) {
       );
     }
 
+    if (Array.isArray(backup.plannedWorkouts)) {
+      localStorage.setItem(
+        "gympilot-planned-workouts-v1",
+        JSON.stringify(backup.plannedWorkouts)
+      );
+    }
+
     alert("GymPilot backup restored! The app will now reload.");
     window.location.reload();
   } catch (error) {
