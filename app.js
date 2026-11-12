@@ -1883,6 +1883,7 @@ const historyPanel = document.getElementById("historyPanel");
   const previousButton = document.getElementById("plannerPreviousMonth");
   const nextButton = document.getElementById("plannerNextMonth");
   const saveButton = document.getElementById("plannerSaveButton");
+  const removeButton = document.getElementById("plannerRemoveButton");
   const cancelButton = document.getElementById("plannerCancelButton");
   const closeButton = document.getElementById("plannerModalClose");
   const backdrop = document.getElementById("plannerModalBackdrop");
@@ -1933,6 +1934,13 @@ const historyPanel = document.getElementById("historyPanel");
       savePlannerWorkout();
     });
   }
+
+  if (removeButton) {
+    removeButton.addEventListener("click", () => {
+      removePlannerWorkout();
+    });
+  }
+
 
   if (cancelButton) {
     cancelButton.addEventListener("click", () => {
