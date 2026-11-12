@@ -1788,6 +1788,13 @@ function openPlannerModal(dateString) {
 
   select.value = existingWorkout ? existingWorkout.routineId : "";
 
+  const removeButton = document.getElementById("plannerRemoveButton");
+
+  if (removeButton) {
+    removeButton.classList.toggle("hidden", !existingWorkout);
+  }
+
+
   modal.classList.remove("hidden");
 }
 
