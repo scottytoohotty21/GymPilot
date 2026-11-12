@@ -1849,6 +1849,32 @@ function savePlannerWorkout() {
   updateSaveStatus("Saved");
 }
 
+function removePlannerWorkout() {
+  if (!plannerSelectedDate) {
+    return;
+  }
+
+  const confirmed = confirm(
+    "Remove the planned workout for " +
+    formatPlannerDate(plannerSelectedDate) +
+    "?\n\nYour saved routine will not be deleted."
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  plannedWorkouts = plannedWorkouts.filter(
+    workout => workout.date !== plannerSelectedDate
+  );
+
+  savePlannedWorkouts();
+  renderPlanner();
+  closePlannerModal();
+  updateSaveStatus("Saved");
+}
+
+
 function setupPlanner() {
     const plannerTab = document.getElementById("showPlannerTab");
 const historyTab = document.getElementById("showHistoryTab");
