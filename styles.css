@@ -2325,3 +2325,78 @@
   -webkit-appearance: none;
   appearance: none;
 }
+
+/* =====================================
+   GYMPILOT — PINK THEME WORKOUT CARDS
+   ===================================== */
+
+/* Exercise cards */
+
+body.theme-pink .workout-exercise-card {
+  background: #f5d9e9;
+  color: #713354;
+  border: 1px solid #d99bbd;
+  box-shadow: 0 4px 14px rgba(130, 50, 95, 0.10);
+}
+
+/* Exercise titles */
+
+body.theme-pink .workout-exercise-card h4 {
+  color: #713354;
+}
+
+/* Planned exercise details */
+
+body.theme-pink .workout-exercise-card .routine-exercise-detail {
+  color: #875573;
+}
+
+/* Individual set rows */
+
+body.theme-pink .workout-exercise-card .workout-set-row {
+  background: #fbeaf3;
+  color: #713354;
+  border: 1px solid #e8b5d0;
+}
+
+/* Set labels */
+
+body.theme-pink .workout-exercise-card .workout-set-row label {
+  color: #713354;
+}
+
+/* Reps and weight input fields */
+
+body.theme-pink .workout-exercise-card .workout-set-row input[type="number"],
+body.theme-pink .workout-exercise-card .workout-set-row input[type="text"] {
+  background: #ffffff;
+  color: #713354;
+  border: 1px solid #d99bbd;
+}
+
+/* Focus styling */
+
+body.theme-pink .workout-exercise-card .workout-set-row input:focus {
+  border-color: #bf548c;
+  outline: 2px solid rgba(191, 84, 140, 0.20);
+  outline-offset: 1px;
+}
+
+/* Exercise and set buttons */
+
+body.theme-pink .workout-exercise-card .secondary-button {
+  background: #ffffff;
+  color: #713354;
+  border: 1px solid #d99bbd;
+}
+
+body.theme-pink .workout-exercise-card .secondary-button:hover {
+  background: #fce7f3;
+}
+
+/* Preserve disabled swap button appearance */
+
+body.theme-pink .workout-exercise-card .secondary-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
