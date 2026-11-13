@@ -1836,3 +1836,85 @@
     width: 100%;
   }
 }
+
+/* =====================================
+   GYMPILOT — LIVE WORKOUT REST TIMER
+   ===================================== */
+
+.workout-rest-timer {
+  margin: 18px 0 24px;
+  padding: 20px;
+  border: 1px solid var(--border, #d5d9e0);
+  border-radius: 16px;
+  background: var(--card-bg, rgba(128, 128, 128, 0.06));
+  text-align: center;
+}
+
+.workout-rest-timer.hidden {
+  display: none;
+}
+
+.workout-rest-timer .section-heading {
+  text-align: left;
+  margin-bottom: 14px;
+}
+
+.rest-timer-display {
+  font-size: clamp(48px, 10vw, 76px);
+  font-weight: 800;
+  letter-spacing: 2px;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  margin: 18px 0 22px;
+}
+
+.rest-timer-presets {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.rest-timer-presets button {
+  min-width: 58px;
+  padding: 10px 12px;
+}
+
+.rest-timer-presets button.active {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.18);
+  font-weight: 700;
+}
+
+.rest-timer-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.rest-timer-actions button {
+  flex: 1;
+  max-width: 180px;
+}
+
+.rest-timer-status {
+  margin: 14px 0 0;
+  font-size: 0.9rem;
+  opacity: 0.75;
+}
+
+.rest-timer-display.finished {
+  color: #16a34a;
+}
+
+@media (max-width: 480px) {
+  .workout-rest-timer {
+    padding: 16px 12px;
+  }
+
+  .rest-timer-presets button {
+    flex: 1;
+    min-width: 52px;
+  }
+}
