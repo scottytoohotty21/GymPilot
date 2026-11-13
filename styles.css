@@ -2009,3 +2009,15 @@
     font-size: 0.8rem;
   }
 }
+
+/* FLOATING TIMER — RESET BUTTON VISIBILITY */
+
+.floating-rest-timer #floatingRestTimerReset {
+  background: #ffffff;
+  color: #172b4d;
+  border: 1px solid #9bb8e8;
+}
+
+.floating-rest-timer #floatingRestTimerReset:hover {
+  background: #e3edff;
+}
