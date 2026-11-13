@@ -1772,3 +1772,67 @@
     display: none;
   }
 }
+
+/* =========================================
+   GYMPILOT - BACKUP & RESTORE
+   ========================================= */
+
+.backup-restore-card {
+  border: 1px solid var(--border-color, #dce5f0);
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.backup-restore-card .form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.backup-restore-card .backup-action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 12px 22px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s ease,
+              box-shadow 0.2s ease;
+}
+
+/* Export button */
+.backup-restore-card #exportBackupBtn {
+  background: var(--accent, #2563eb);
+  color: white;
+  border: 1px solid transparent;
+}
+
+/* Restore button */
+.backup-restore-card #restoreBackupBtn {
+  background: transparent;
+  color: var(--accent, #2563eb);
+  border: 2px solid currentColor;
+}
+
+/* Hover effects */
+@media (hover: hover) {
+  .backup-restore-card .backup-action-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 14px rgba(0, 0, 0, 0.12);
+  }
+}
+
+/* Mobile layout */
+@media (max-width: 600px) {
+  .backup-restore-card .form-actions {
+    flex-direction: column;
+  }
+
+  .backup-restore-card .backup-action-button {
+    width: 100%;
+  }
+}
