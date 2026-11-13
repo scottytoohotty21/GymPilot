@@ -993,6 +993,7 @@
         </select>
       </label>
 
+      
       <label>
         Laurie theme
         <select id="laurieThemeSelect">
@@ -1002,51 +1003,65 @@
       </label>
     </div>
   </div>
-  
-<div class="card">
-  <div class="section-heading">
-    <div>
-      <h3>Backup &amp; Restore</h3>
-      <p>Keep a safe copy of your GymPilot data.</p>
+
+  <!-- =========================
+       BACKUP & RESTORE
+  ========================== -->
+
+  <div class="card backup-restore-card">
+
+    <div class="section-heading">
+      <div>
+        <h3>Backup &amp; Restore</h3>
+        <p>Keep a safe copy of your GymPilot data.</p>
+      </div>
     </div>
+
+    <p>
+      Export your exercises, routines, workouts,
+      planner and personal bests to a backup file.
+    </p>
+
+    <div class="form-actions">
+
+      <button
+        type="button"
+        class="primary-button backup-action-button"
+        id="exportBackupBtn"
+      >
+        Export Backup
+      </button>
+
+      <button
+        type="button"
+        class="secondary-button backup-action-button"
+        id="restoreBackupBtn"
+      >
+        Restore Backup
+      </button>
+
+    </div>
+
+    <input
+      type="file"
+      id="restoreBackupFile"
+      accept=".json,application/json"
+      hidden
+    />
+
   </div>
 
-  <p>
-    Export your exercises, routines, workouts,
-    planner and personal bests to a backup file.
-  </p>
+  <!-- =========================
+       CURRENT SETUP
+  ========================== -->
 
-  <div class="form-actions">
-    
-<button type="button" class="primary-button backup-action-button" id="exportBackupBtn">
-
-      Export Backup
-    </button>
-
-    
-<button type="button" class="primary-button backup-action-button" id="exportBackupBtn">
-
-      Restore Backup
-    </button>
-  </div>
-
-  <input
-    type="file"
-    id="restoreBackupFile"
-    accept=".json,application/json"
-    hidden
-  />
-</div>
-
-
-  
-<div class="card backup-restore-card">
-
+  <div class="card">
     <h3>Current setup</h3>
     <div id="settingsSummary" class="summary-strip">
       Loading settings...
     </div>
   </div>
+
 </section>
 
     </main>
