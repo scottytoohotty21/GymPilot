@@ -1258,6 +1258,18 @@ function setupWorkoutMode() {
     });
   }
 
+  const addExerciseSave = document.getElementById(
+    "workoutAddExerciseSave"
+  );
+
+  if (addExerciseSave) {
+    addExerciseSave.addEventListener(
+      "click",
+      addExerciseToActiveWorkout
+    );
+  }
+
+
   const addExerciseButton = document.getElementById(
     "addWorkoutExerciseButton"
   );
@@ -1526,6 +1538,90 @@ function closeWorkoutAddExerciseModal() {
   if (modal) {
     modal.classList.add("hidden");
   }
+}
+
+function addExerciseToActiveWorkout() {
+  if (!activeWorkout) {
+    return;
+  }
+
+  const exerciseId = document.getElementById(
+    "workoutAddExerciseSelect"
+  ).value;
+
+  const setsInput = document.getElementById("workoutAddSets");
+  const repsInput = document.getElementById("workoutAddReps");
+  const weightInput = document.getElementById("workoutAddWeight");
+  const unitInput = document.getElementById("workoutAddUnit");
+
+  const exercise = (gymPilotData.exercises || []).find(
+    item => item.id === exerciseId
+  );
+
+  if (!exercise) {
+    alert("Please choose an exercise.");
+    return;
+  }
+
+  const plannedSets = Number(setsInput.value);
+  const plannedReps = repsInput.value;
+  const plannedWeight = weightInput.value;
+  const plannedUnit = unitInput.value;
+
+  if (
+    !Number.isInteger(plannedSets) ||
+    plannedSets < 1 ||
+    plannedSets > 100
+  ) {
+    alert("Please enter a valid number of sets.");
+    return;
+  }
+
+  if (
+    plannedReps === "" ||
+    !Number.isInteger(Number(plannedReps)) ||
+    Number(plannedReps) < 0
+  ) {
+    alert("Please enter valid planned reps.");
+    return;
+  }
+
+  if (
+    plannedWeight !== "" &&
+    (!Number.isFinite(Number(plannedWeight)) ||
+      Number(plannedWeight) < 0)
+  ) {
+    alert("Please enter a valid planned load.");
+    return;
+  }
+
+  const newExercise = {
+    workoutExerciseId: crypto.randomUUID(),
+    exerciseId: exercise.id,
+    name: exercise.name,
+    type: exercise.type || "",
+    muscleGroup: exercise.muscleGroup || "",
+    plannedSets,
+    plannedReps,
+    plannedWeight,
+    plannedUnit,
+
+    sets: Array.from({ length: plannedSets }, (_, index) => ({
+      setId: crypto.randomUUID(),
+      setNumber: index + 1,
+      completed: false,
+      actualReps: plannedReps,
+      actualWeight: plannedWeight,
+      actualUnit: plannedUnit
+    }))
+  };
+
+  activeWorkout.exercises.push(newExercise);
+
+  saveActiveWorkout();
+  renderWorkoutMode();
+  closeWorkoutAddExerciseModal();
+  updateSaveStatus("Saved");
 }
 
 
