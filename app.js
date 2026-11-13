@@ -1527,12 +1527,19 @@ function tickRestTimer() {
     Math.ceil((restTimerEndTime - Date.now()) / 1000)
   );
 
+  
   if (restTimerRemaining === 0) {
     restTimerRunning = false;
     restTimerEndTime = null;
     clearInterval(restTimerInterval);
     restTimerInterval = null;
+
+    // Double vibration when rest finishes
+    if ("vibrate" in navigator) {
+      navigator.vibrate([200, 120, 200]);
+    }
   }
+
 
   renderRestTimer();
 }
