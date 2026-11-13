@@ -636,6 +636,110 @@
 
 
 <!-- ==================================
+     SWAP EXERCISE DURING LIVE WORKOUT
+     ================================== -->
+
+<div id="workoutSwapExerciseModal" class="planner-modal hidden">
+
+  <div
+    class="planner-modal-backdrop"
+    id="workoutSwapExerciseBackdrop"
+  ></div>
+
+  <div class="planner-modal-card">
+
+    <div class="section-heading">
+      <div>
+        <h3>Swap exercise</h3>
+        <p id="workoutSwapExerciseName">
+          Choose a replacement exercise.
+        </p>
+      </div>
+
+      <button
+        type="button"
+        class="secondary-button planner-modal-close"
+        id="workoutSwapExerciseClose"
+      >
+        ×
+      </button>
+    </div>
+
+    <div class="routine-exercise-edit-fields">
+
+      <label>
+        Replacement exercise
+        <select id="workoutSwapExerciseSelect">
+          <option value="">Choose exercise</option>
+        </select>
+      </label>
+
+      <label>
+        Planned sets
+        <input
+          type="number"
+          id="workoutSwapSets"
+          min="1"
+          step="1"
+        />
+      </label>
+
+      <label>
+        Planned reps
+        <input
+          type="number"
+          id="workoutSwapReps"
+          min="0"
+          step="1"
+        />
+      </label>
+
+      <label>
+        Planned load
+        <input
+          type="number"
+          id="workoutSwapWeight"
+          min="0"
+          step="any"
+        />
+      </label>
+
+      <label>
+        Unit
+        <select id="workoutSwapUnit">
+          <option value="kg">kg</option>
+          <option value="lb">lb</option>
+          <option value="bodyweight">Bodyweight</option>
+        </select>
+      </label>
+
+    </div>
+
+    <div class="form-actions">
+
+      <button
+        type="button"
+        class="secondary-button"
+        id="workoutSwapExerciseCancel"
+      >
+        Cancel
+      </button>
+
+      <button
+        type="button"
+        class="primary-button"
+        id="workoutSwapExerciseSave"
+      >
+        Swap exercise
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+<!-- ==================================
      ADD EXERCISE TO LIVE WORKOUT
      ================================== -->
 
