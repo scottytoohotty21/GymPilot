@@ -1489,11 +1489,34 @@ function renderWorkoutMode() {
             : ""}
         </div>
 
+       
         <div class="workout-set-list">
           ${setRows}
         </div>
 
+        <!-- LIVE WORKOUT SET CONTROLS -->
+        <div class="form-actions workout-set-actions">
+
+          <button
+            type="button"
+            class="secondary-button"
+            onclick="removeActiveWorkoutSet('${exercise.workoutExerciseId}')"
+          >
+            − Remove set
+          </button>
+
+          <button
+            type="button"
+            class="secondary-button"
+            onclick="addActiveWorkoutSet('${exercise.workoutExerciseId}')"
+          >
+            + Add set
+          </button>
+
+        </div>
+
       </article>
+
     `;
   }).join("");
 }
