@@ -2298,3 +2298,30 @@
   align-items: stretch;
   gap: 4px;
 }
+
+/* =====================================
+   GYMPILOT — WORKOUT DATE SAFARI FIX
+   ===================================== */
+
+/* Allow form-grid children to shrink on mobile */
+
+#workout .form-grid {
+  min-width: 0;
+}
+
+#workout .form-grid > label {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Prevent iPhone date input from expanding its column */
+
+#workout #workoutDate {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
+}
