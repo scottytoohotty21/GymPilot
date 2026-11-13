@@ -327,23 +327,54 @@
     </div>
   </div>
 
-  <div class="card" id="activeWorkoutCard">
-    <div class="section-heading">
-      <div>
-        <h3 id="activeWorkoutTitle">No active workout</h3>
-        <p id="activeWorkoutSummary">Choose a routine above to begin.</p>
-      </div>
-    </div>
+  
+<div class="card" id="activeWorkoutCard">
 
-    <div id="activeWorkoutNotice" class="active-workout-notice hidden"></div>
-    <div id="activeWorkoutList" class="workout-list"></div>
-
-    <div class="form-actions workout-save-actions">
-      <button type="button" class="primary-button" id="saveWorkoutButton">
-        Save completed workout
-      </button>
+  <div class="section-heading">
+    <div>
+      <h3 id="activeWorkoutTitle">No active workout</h3>
+      <p id="activeWorkoutSummary">
+        Choose a routine above to begin.
+      </p>
     </div>
   </div>
+
+  <div
+    id="activeWorkoutNotice"
+    class="active-workout-notice hidden"
+  ></div>
+
+  <div
+    id="activeWorkoutList"
+    class="workout-list"
+  ></div>
+
+  <!-- ADD EXERCISE TO ACTIVE WORKOUT -->
+  <div
+    class="form-actions workout-add-actions hidden"
+    id="workoutAddActions"
+  >
+    <button
+      type="button"
+      class="secondary-button"
+      id="addWorkoutExerciseButton"
+    >
+      + Add exercise
+    </button>
+  </div>
+
+  <!-- SAVE COMPLETED WORKOUT -->
+  <div class="form-actions workout-save-actions">
+    <button
+      type="button"
+      class="primary-button"
+      id="saveWorkoutButton"
+    >
+      Save completed workout
+    </button>
+  </div>
+
+</div>
 </section>
 <section class="screen" id="history">
 
