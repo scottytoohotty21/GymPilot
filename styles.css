@@ -2149,3 +2149,87 @@
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+/* =====================================
+   GYMPILOT — COMPACT WORKOUT SET ROWS
+   ===================================== */
+
+.workout-exercise-card .workout-set-row {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+  border-radius: 10px;
+}
+
+/* Stack checkbox and set number in first column */
+
+.workout-exercise-card .workout-set-check {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0;
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+/* Compact labels above inputs */
+
+.workout-exercise-card .workout-set-row label {
+  min-width: 0;
+  font-size: 0.75rem;
+}
+
+/* Input boxes */
+
+.workout-exercise-card .workout-set-row input[type="number"],
+.workout-exercise-card .workout-set-row input[type="text"] {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  margin-top: 4px;
+  padding: 9px 8px;
+  font-size: 1rem;
+  min-height: 42px;
+}
+
+/* Checkbox */
+
+.workout-exercise-card .workout-set-check input[type="checkbox"] {
+  width: 24px;
+  height: 24px;
+  margin: 0;
+}
+
+/* Less space between sets */
+
+.workout-exercise-card .workout-set-list {
+  gap: 6px;
+  margin-top: 10px;
+}
+
+/* Tighter exercise cards */
+
+.workout-exercise-card {
+  padding: 12px;
+}
+
+/* Extra-small phones */
+
+@media (max-width: 380px) {
+  .workout-exercise-card .workout-set-row {
+    grid-template-columns: 44px minmax(0, 1fr) minmax(0, 1fr);
+    gap: 5px;
+    padding: 6px;
+  }
+
+  .workout-exercise-card .workout-set-row input[type="number"],
+  .workout-exercise-card .workout-set-row input[type="text"] {
+    padding: 8px 5px;
+    font-size: 0.95rem;
+  }
+}
