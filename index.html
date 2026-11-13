@@ -344,6 +344,52 @@
     class="active-workout-notice hidden"
   ></div>
 
+
+<!-- REST TIMER -->
+<div id="workoutRestTimer" class="workout-rest-timer hidden">
+
+  <div class="section-heading">
+    <div>
+      <h3>Rest Timer</h3>
+      <p>Choose your rest time and press Start.</p>
+    </div>
+  </div>
+
+  <div class="rest-timer-display" id="restTimerDisplay">
+    01:30
+  </div>
+
+  <div class="rest-timer-presets">
+    <button type="button" class="secondary-button"
+      data-rest-seconds="30">30s</button>
+
+    <button type="button" class="secondary-button"
+      data-rest-seconds="60">60s</button>
+
+    <button type="button" class="secondary-button"
+      data-rest-seconds="90">90s</button>
+
+    <button type="button" class="secondary-button"
+      data-rest-seconds="120">2m</button>
+
+    <button type="button" class="secondary-button"
+      data-rest-seconds="180">3m</button>
+  </div>
+
+  <div class="form-actions rest-timer-actions">
+    <button type="button" class="primary-button"
+      id="restTimerStartPause">Start</button>
+
+    <button type="button" class="secondary-button"
+      id="restTimerReset">Reset</button>
+  </div>
+
+  <p id="restTimerStatus" class="rest-timer-status">
+    Ready when you are.
+  </p>
+
+</div>
+
   <div
     id="activeWorkoutList"
     class="workout-list"
