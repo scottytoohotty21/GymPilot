@@ -1725,6 +1725,7 @@ updateFloatingRestTimerVisibility();
 }
 
 
+ 
   list.innerHTML = activeWorkout.exercises.map((exercise) => {
     const setRows = exercise.sets.map((set) => {
       return `
@@ -1739,7 +1740,7 @@ updateFloatingRestTimerVisibility();
           </label>
 
           <label>
-            Actual reps
+            Reps
             <input
               type="number"
               min="0"
@@ -1750,7 +1751,7 @@ updateFloatingRestTimerVisibility();
           </label>
 
           <label>
-            Actual weight / resistance
+            KGs / Time
             <input
               type="text"
               value="${escapeHTML(set.actualWeight)}"
@@ -1760,6 +1761,7 @@ updateFloatingRestTimerVisibility();
         </div>
       `;
     }).join("");
+
 
     return `
       <article class="workout-exercise-card">
