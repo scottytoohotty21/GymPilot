@@ -1,3718 +1,2239 @@
-
-function exportGymPilotBackup() {
-  const savedData = localStorage.getItem("gympilot-data-v1");
-  const activeWorkout = localStorage.getItem("gympilot-active-workout-v1");
-  const plannedWorkouts = localStorage.getItem("gympilot-planned-workouts-v1");
-
-  if (!savedData) {
-    alert("No GymPilot data found to back up.");
-    return;
-  }
-
-  const backup = {
-    app: "GymPilot",
-    backupVersion: 1,
-    exportedAt: new Date().toISOString(),
-    
-data: JSON.parse(savedData),
-activeWorkout: activeWorkout ? JSON.parse(activeWorkout) : null,
-plannedWorkouts: plannedWorkouts ? JSON.parse(plannedWorkouts) : []
-
-  };
-
-  const blob = new Blob(
-    [JSON.stringify(backup, null, 2)],
-    { type: "application/json" }
-  );
-
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-
-  link.href = url;
-  link.download = `GymPilot-Backup-${new Date().toISOString().slice(0, 10)}.json`;
-
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-
-  setTimeout(() => URL.revokeObjectURL(url), 60000);
-}
-
-async function restoreGymPilotBackup(file) {
-  if (!file) return;
-
-  let backup;
-
-  try {
-    backup = JSON.parse(await file.text());
-  } catch (error) {
-    alert("This file could not be read as a JSON backup.");
-    return;
-  }
-
-  if (
-    !backup ||
-    backup.app !== "GymPilot" ||
-    backup.backupVersion !== 1 ||
-    !backup.data ||
-    typeof backup.data !== "object" ||
-    Array.isArray(backup.data)
-  ) {
-    alert("This is not a recognised GymPilot backup file.");
-    return;
-  }
-
-  const confirmed = confirm(
-    "RESTORE GYMPILOT BACKUP?\n\n" +
-    "This will REPLACE all existing GymPilot data " +
-    "in this installation, including exercises, " +
-    "routines, workouts, planner and PBs.\n\n" +
-    "Continue?"
-  );
-
-  if (!confirmed) return;
-
-  try {
-    const savedData = JSON.stringify(backup.data);
-    const savedWorkout = backup.activeWorkout == null
-      ? null
-      : JSON.stringify(backup.activeWorkout);
-
-    localStorage.setItem("gympilot-data-v1", savedData);
-
-    if (savedWorkout === null) {
-      localStorage.removeItem("gympilot-active-workout-v1");
-    } else {
-      localStorage.setItem(
-        "gympilot-active-workout-v1",
-        savedWorkout
-      );
-    }
-
-    if (Array.isArray(backup.plannedWorkouts)) {
-      localStorage.setItem(
-        "gympilot-planned-workouts-v1",
-        JSON.stringify(backup.plannedWorkouts)
-      );
-    }
-
-    alert("GymPilot backup restored! The app will now reload.");
-    window.location.reload();
-  } catch (error) {
-    alert("Restore failed. Your data may not have been fully restored.");
-    console.error("GymPilot restore error:", error);
-  }
-}
-
-const STORAGE_KEY = "gympilot-data-v1";
-const ACTIVE_WORKOUT_STORAGE_KEY = "gympilot-active-workout-v1";
-
-const defaultData = {
-  appName: "GymPilot",
-  routines: [],
-  exercises: [],
-  completedWorkouts: [],
-  personalBests: [],
-  nutrition: {
-    foods: [],
-    meals: [],
-    dailyLogs: []
-  },
-  progress: {
-    checkIns: [],
-    measurements: [],
-    photos: []
-  },
-  settings: {
-  activeProfile: "Scott",
-  accountabilityPartner: "Laurie",
-  profiles: [
-    {
-      name: "Scott",
-      theme: "blue"
-    },
-    {
-      name: "Laurie",
-      theme: "pink"
-    }
-  ]
-}
-};
-
-let gymPilotData = loadData();
-let currentRoutineExercises = [];
-let activeWorkout = loadActiveWorkout();
-let historyFilter = null;
-let activeWeekFilter = null; // currently highlighted week in chart
-let activeChartFilter = null; // stores currently highlighted month in chart
-let plannedWorkouts = JSON.parse(
-  localStorage.getItem("gympilot-planned-workouts-v1") || "[]"
-);
-
-let plannerCurrentMonth = new Date();
-let plannerSelectedDate = null;
-document.addEventListener("DOMContentLoaded", () => {
-  setupTabs();
-  setupDashboardJumpButtons();
-  setupExerciseLibrary();
-  setupRoutineBuilder();
-  setupWorkoutMode();
-  setupSettings();
-  setupPlanner();
-
-  applyActiveTheme();
-  setDefaultWorkoutDate();
-  renderDashboard();
-  renderExerciseLibrary();
-  renderRoutineBuilder();
-  populateRoutineExerciseSelect();
-  populateWorkoutRoutineSelect();
-  renderWorkoutMode();
-  renderHistory();
-renderPersonalBests();
-renderSettings();
-
-updateSaveStatus("Ready");
-});
-
-function loadData() {
-  const savedData = localStorage.getItem(STORAGE_KEY);
-
-  if (!savedData) {
-    return structuredClone(defaultData);
-  }
-
-  try {
-    const parsedData = JSON.parse(savedData);
-
-    return {
-      ...structuredClone(defaultData),
-      ...parsedData,
-      routines: parsedData.routines || [],
-      exercises: parsedData.exercises || [],
-      completedWorkouts: parsedData.completedWorkouts || [],
-      personalBests: parsedData.personalBests || [],
-nutrition: {
-  ...structuredClone(defaultData.nutrition),
-  ...(parsedData.nutrition || {})
-},
-progress: {
-  ...structuredClone(defaultData.progress),
-  ...(parsedData.progress || {})
-},
-settings: {
-  ...defaultData.settings,
-  ...(parsedData.settings || {}),
-  profiles: getMergedProfiles(parsedData.settings?.profiles)
-}
-    };
-  } catch (error) {
-    console.error("Could not load GymPilot data:", error);
-    return structuredClone(defaultData);
-  }
-}
-
-function saveData() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(gymPilotData));
-  updateSaveStatus("Saved");
-}
-
-function setupTabs() {
-  const tabButtons = document.querySelectorAll(".tab-button");
-  const screens = document.querySelectorAll(".screen");
-
-  tabButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-      showScreen(button.dataset.screen);
-    });
-  });
-}
-
-function showScreen(screenId) {
-  const tabButtons = document.querySelectorAll(".tab-button");
-  const screens = document.querySelectorAll(".screen");
-
-  tabButtons.forEach((tab) => {
-    tab.classList.toggle("active", tab.dataset.screen === screenId);
-  });
-
-  screens.forEach((screen) => {
-    screen.classList.toggle("active", screen.id === screenId);
-  });
-
-  window.scrollTo({
-    top: 0,
-    behavior: "smooth"
-  });
-}
-
-function setupDashboardJumpButtons() {
-  const jumpButtons = document.querySelectorAll("[data-jump-screen]");
-
-  jumpButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-      showScreen(button.dataset.jumpScreen);
-    });
-  });
-}
-
-/* ---------------------------
-   Active Workout Auto-save
----------------------------- */
-
-function loadActiveWorkout() {
-  const savedWorkout = localStorage.getItem(ACTIVE_WORKOUT_STORAGE_KEY);
-
-  if (!savedWorkout) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(savedWorkout);
-  } catch (error) {
-    console.error("Could not load active workout:", error);
-    localStorage.removeItem(ACTIVE_WORKOUT_STORAGE_KEY);
-    return null;
-  }
-}
-
-function saveActiveWorkout() {
-  if (!activeWorkout) {
-    localStorage.removeItem(ACTIVE_WORKOUT_STORAGE_KEY);
-    return;
-  }
-
-  localStorage.setItem(ACTIVE_WORKOUT_STORAGE_KEY, JSON.stringify(activeWorkout));
-}
-
-function clearSavedActiveWorkout() {
-  localStorage.removeItem(ACTIVE_WORKOUT_STORAGE_KEY);
-}
-/* ---------------------------
-   Settings / Profiles / Themes
----------------------------- */
-
-function setupSettings() {
-  const activeProfileSelect = document.getElementById("activeProfileSelect");
-  const scottThemeSelect = document.getElementById("scottThemeSelect");
-  const laurieThemeSelect = document.getElementById("laurieThemeSelect");
-  const exportBackupBtn = document.getElementById("exportBackupBtn");
-
-if (exportBackupBtn) {
-  exportBackupBtn.addEventListener("click", exportGymPilotBackup);
-}
-
-const restoreBackupBtn = document.getElementById("restoreBackupBtn");
-const restoreBackupFile = document.getElementById("restoreBackupFile");
-
-if (restoreBackupBtn && restoreBackupFile) {
-  restoreBackupBtn.addEventListener("click", () => {
-    restoreBackupFile.value = "";
-    restoreBackupFile.click();
-  });
-}
-
-if (restoreBackupFile) {
-  restoreBackupFile.addEventListener("change", () => {
-    const file = restoreBackupFile.files[0];
-
-    if (file) {
-      restoreGymPilotBackup(file);
-    }
-  });
-}
-
-
-
-  if (activeProfileSelect) {
-    activeProfileSelect.addEventListener("change", () => {
-      gymPilotData.settings.activeProfile = activeProfileSelect.value;
-      saveData();
-      applyActiveTheme();
-      renderDashboard();
-      renderSettings();
-    });
-  }
-
-  if (scottThemeSelect) {
-    scottThemeSelect.addEventListener("change", () => {
-      updateProfileTheme("Scott", scottThemeSelect.value);
-    });
-  }
-
-  if (laurieThemeSelect) {
-    laurieThemeSelect.addEventListener("change", () => {
-      updateProfileTheme("Laurie", laurieThemeSelect.value);
-    });
-  }
-}
-
-function renderSettings() {
-  const activeProfileSelect = document.getElementById("activeProfileSelect");
-  const scottThemeSelect = document.getElementById("scottThemeSelect");
-  const laurieThemeSelect = document.getElementById("laurieThemeSelect");
-  const settingsSummary = document.getElementById("settingsSummary");
-
-  const activeProfile = getActiveProfile();
-  const scottProfile = getProfileByName("Scott");
-  const laurieProfile = getProfileByName("Laurie");
-
-  if (activeProfileSelect) {
-    activeProfileSelect.value = activeProfile;
-  }
-
-  if (scottThemeSelect) {
-    scottThemeSelect.value = scottProfile.theme;
-  }
-
-  if (laurieThemeSelect) {
-    laurieThemeSelect.value = laurieProfile.theme;
-  }
-
-  if (settingsSummary) {
-    settingsSummary.textContent = `Training as ${activeProfile}. Scott theme: ${themeLabel(scottProfile.theme)}. Laurie theme: ${themeLabel(laurieProfile.theme)}.`;
-  }
-}
-
-function updateProfileTheme(profileName, theme) {
-  gymPilotData.settings.profiles = getProfiles().map((profile) => {
-    if (profile.name === profileName) {
-      return {
-        ...profile,
-        theme
-      };
-    }
-
-    return profile;
-  });
-
-  saveData();
-  applyActiveTheme();
-  renderSettings();
-}
-
-function applyActiveTheme() {
-  const theme = getActiveTheme();
-
-  document.body.classList.remove("theme-blue", "theme-pink");
-  document.body.classList.add(`theme-${theme}`);
-}
-
-function getActiveProfile() {
-  return gymPilotData.settings.activeProfile || "Scott";
-}
-
-function getActiveTheme() {
-  return getProfileByName(getActiveProfile()).theme || "blue";
-}
-
-function getProfileByName(profileName) {
-  return getProfiles().find((profile) => profile.name === profileName) || {
-    name: profileName,
-    theme: "blue"
-  };
-}
-
-function getProfiles() {
-  return getMergedProfiles(gymPilotData.settings.profiles);
-}
-
-function getMergedProfiles(savedProfiles) {
-  const fallbackProfiles = structuredClone(defaultData.settings.profiles);
-  const profiles = Array.isArray(savedProfiles) ? savedProfiles : [];
-
-  return fallbackProfiles.map((fallbackProfile) => {
-    const savedProfile = profiles.find((profile) => profile.name === fallbackProfile.name);
-
-    return {
-      ...fallbackProfile,
-      ...(savedProfile || {})
-    };
-  });
-}
-
-function themeLabel(theme) {
-  if (theme === "pink") {
-    return "Soft Rose";
-  }
-
-  return "Blue";
-}
-
-function profileLabel(profile) {
-  return profile || "Scott";
-}
-/* ---------------------------
-   Dashboard
----------------------------- */
-
-function renderDashboard() {
-  const dashboardIntro = document.getElementById("dashboardIntro");
-const lastWorkoutSummary = document.getElementById("lastWorkoutSummary");
-const latestPbSummary = document.getElementById("latestPbSummary");
-
-  const routineCountNumber = document.getElementById("routineCountNumber");
-  const exerciseCountNumber = document.getElementById("exerciseCountNumber");
-  const workoutCountNumber = document.getElementById("workoutCountNumber");
-  const pbCountNumber = document.getElementById("pbCountNumber");
-
-  const workouts = gymPilotData.completedWorkouts || [];
-  const personalBests = gymPilotData.personalBests || [];
-  if (dashboardIntro) {
-  dashboardIntro.textContent = `Training as ${getActiveProfile()}. Choose a routine in Workout Mode to begin.`;
-}
-
-  if (lastWorkoutSummary) {
-    if (workouts.length === 0) {
-      lastWorkoutSummary.textContent = "No workouts logged yet.";
-    } else {
-      const latestWorkout = workouts[0];
-      const completedSets = latestWorkout.exercises.reduce((total, exercise) => {
-        return total + exercise.sets.filter((set) => set.completed).length;
-      }, 0);
-
-      lastWorkoutSummary.textContent = `${profileLabel(latestWorkout.profile)} • ${latestWorkout.routineName} • ${formatDate(latestWorkout.date)} • ${completedSets} completed sets`;
-    }
-  }
-
-  if (latestPbSummary) {
-    if (personalBests.length === 0) {
-      latestPbSummary.textContent = "No PBs yet.";
-    } else {
-      const latestPb = personalBests[0];
-      latestPbSummary.textContent = `${profileLabel(latestPb.profile)} • ${latestPb.exerciseName} • ${latestPb.label}: ${latestPb.displayValue}`;
-    }
-  }
-
-  if (routineCountNumber) {
-    routineCountNumber.textContent = gymPilotData.routines.length;
-  }
-
-  if (exerciseCountNumber) {
-    exerciseCountNumber.textContent = gymPilotData.exercises.length;
-  }
-
-  if (workoutCountNumber) {
-    workoutCountNumber.textContent = workouts.length;
-  }
-
-  if (pbCountNumber) {
-    pbCountNumber.textContent = personalBests.length;
-  }
-}
-
-/* ---------------------------
-   Exercise Library
----------------------------- */
-
-function setupExerciseLibrary() {
-  const form = document.getElementById("exerciseForm");
-  const cancelButton = document.getElementById("cancelEditExerciseButton");
-
-  if (!form) {
-    return;
-  }
-
-  form.addEventListener("submit", (event) => {
-    event.preventDefault();
-    saveExerciseFromForm();
-  });
-
-  if (cancelButton) {
-    cancelButton.addEventListener("click", () => {
-      resetExerciseForm();
-    });
-  }
-}
-
-function saveExerciseFromForm() {
-  const exerciseId = document.getElementById("exerciseId").value;
-
-  const exercise = {
-    id: exerciseId || crypto.randomUUID(),
-    name: document.getElementById("exerciseName").value.trim(),
-    type: document.getElementById("exerciseType").value,
-    muscleGroup: document.getElementById("exerciseMuscleGroup").value.trim(),
-    defaultSets: numberOrEmpty(document.getElementById("exerciseSets").value),
-    defaultReps: numberOrEmpty(document.getElementById("exerciseReps").value),
-    defaultWeight: document.getElementById("exerciseWeight").value.trim(),
-defaultUnit: document.getElementById("exerciseUnit").value,
-notes: document.getElementById("exerciseNotes").value.trim(),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  };
-
-  if (!exercise.name || !exercise.type) {
-    alert("Please add an exercise name and type.");
-    return;
-  }
-
-  if (exerciseId) {
-    const existingExercise = gymPilotData.exercises.find((item) => item.id === exerciseId);
-
-    if (existingExercise) {
-      exercise.createdAt = existingExercise.createdAt || new Date().toISOString();
-    }
-
-    gymPilotData.exercises = gymPilotData.exercises.map((item) => {
-      if (item.id === exerciseId) {
-        return exercise;
-      }
-
-      return item;
-    });
-  } else {
-    gymPilotData.exercises.push(exercise);
-  }
-
-  sortExercises();
-  saveData();
-
-  renderDashboard();
-  renderExerciseLibrary();
-  populateRoutineExerciseSelect();
-  renderRoutineDraftList();
-  renderRoutineBuilder();
-  resetExerciseForm();
-}
-
-function renderExerciseLibrary() {
-  const exerciseList = document.getElementById("exerciseList");
-  const librarySummary = document.getElementById("librarySummary");
-
-  if (!exerciseList) {
-    return;
-  }
-
-  const exercises = gymPilotData.exercises || [];
-
-  if (librarySummary) {
-    const count = exercises.length;
-    librarySummary.textContent = `${count} saved ${count === 1 ? "exercise" : "exercises"}`;
-  }
-
-  if (exercises.length === 0) {
-    exerciseList.innerHTML = `
-      <div class="empty-state">
-        No exercises yet. Add your first one above.
-      </div>
-    `;
-    return;
-  }
-
-  exerciseList.innerHTML = exercises.map((exercise) => {
-    const stats = [];
-
-    if (exercise.defaultSets !== "") {
-      stats.push(`${exercise.defaultSets} sets`);
-    }
-
-    if (exercise.defaultReps !== "") {
-      stats.push(`${exercise.defaultReps} reps`);
-    }
-
-   if (exercise.defaultWeight) {
-  stats.push(`${escapeHTML(formatLoadWithUnit(exercise.defaultWeight, exercise.defaultUnit))}`);
-}
-
-    const statChips = stats.map((stat) => {
-      return `<span class="stat-chip">${stat}</span>`;
-    }).join("");
-
-    return `
-      <article class="exercise-item">
-        <div class="exercise-item-header">
-          <div>
-            <h4>${escapeHTML(exercise.name)}</h4>
-            <div class="exercise-meta">
-              ${escapeHTML(exercise.type || "No type")}
-              ${exercise.muscleGroup ? ` • ${escapeHTML(exercise.muscleGroup)}` : ""}
-            </div>
-          </div>
-        </div>
-
-        ${statChips ? `<div class="exercise-stats">${statChips}</div>` : ""}
-
-        ${exercise.notes ? `<div class="exercise-notes">${escapeHTML(exercise.notes)}</div>` : ""}
-
-        <div class="exercise-actions">
-          <button class="small-button" type="button" onclick="editExercise('${exercise.id}')">
-            Edit
-          </button>
-
-          <button class="danger-button" type="button" onclick="deleteExercise('${exercise.id}')">
-            Delete
-          </button>
-        </div>
-      </article>
-    `;
-  }).join("");
-}
-
-function editExercise(exerciseId) {
-  const exercise = gymPilotData.exercises.find((item) => item.id === exerciseId);
-
-  if (!exercise) {
-    return;
-  }
-
-  document.getElementById("exerciseId").value = exercise.id;
-  document.getElementById("exerciseName").value = exercise.name || "";
-  document.getElementById("exerciseType").value = exercise.type || "";
-  document.getElementById("exerciseMuscleGroup").value = exercise.muscleGroup || "";
-  document.getElementById("exerciseSets").value = exercise.defaultSets ?? "";
-  document.getElementById("exerciseReps").value = exercise.defaultReps ?? "";
-  document.getElementById("exerciseWeight").value = exercise.defaultWeight || "";
-  document.getElementById("exerciseUnit").value = exercise.defaultUnit || "kg";
-  document.getElementById("exerciseNotes").value = exercise.notes || "";
-
-  const saveButton = document.getElementById("saveExerciseButton");
-  const cancelButton = document.getElementById("cancelEditExerciseButton");
-
-  if (saveButton) {
-    saveButton.textContent = "Update exercise";
-  }
-
-  if (cancelButton) {
-    cancelButton.classList.add("visible");
-  }
-
-  document.getElementById("library").scrollIntoView({
-    behavior: "smooth",
-    block: "start"
-  });
-}
-
-function deleteExercise(exerciseId) {
-  const exercise = gymPilotData.exercises.find((item) => item.id === exerciseId);
-
-  if (!exercise) {
-    return;
-  }
-
-  const confirmed = confirm(`Delete ${exercise.name}? This will also remove it from saved routines.`);
-
-  if (!confirmed) {
-    return;
-  }
-
-  gymPilotData.exercises = gymPilotData.exercises.filter((item) => item.id !== exerciseId);
-
-  currentRoutineExercises = currentRoutineExercises.filter((item) => item.exerciseId !== exerciseId);
-
-  gymPilotData.routines = gymPilotData.routines.map((routine) => {
-    return {
-      ...routine,
-      exercises: (routine.exercises || []).filter((item) => item.exerciseId !== exerciseId)
-    };
-  });
-
-  saveData();
-
-  renderDashboard();
-  renderExerciseLibrary();
-  populateRoutineExerciseSelect();
-  populateWorkoutRoutineSelect();
-  renderRoutineDraftList();
-  renderRoutineBuilder();
-  resetExerciseForm();
-}
-
-function resetExerciseForm() {
-  const form = document.getElementById("exerciseForm");
-  const saveButton = document.getElementById("saveExerciseButton");
-  const cancelButton = document.getElementById("cancelEditExerciseButton");
-
-  if (form) {
-    form.reset();
-  }
-
-  document.getElementById("exerciseId").value = "";
-
-  if (saveButton) {
-    saveButton.textContent = "Save exercise";
-  }
-
-  if (cancelButton) {
-    cancelButton.classList.remove("visible");
-  }
-}
-
-/* ---------------------------
-   Routine Builder
----------------------------- */
-
-function setupRoutineBuilder() {
-  const form = document.getElementById("routineForm");
-  const addExerciseButton = document.getElementById("addExerciseToRoutineButton");
-  const cancelButton = document.getElementById("cancelEditRoutineButton");
-
-  if (!form) {
-    return;
-  }
-
-  form.addEventListener("submit", (event) => {
-    event.preventDefault();
-    saveRoutineFromForm();
-  });
-
-  if (addExerciseButton) {
-    addExerciseButton.addEventListener("click", () => {
-      addExerciseToRoutineDraft();
-    });
-  }
-
-  if (cancelButton) {
-    cancelButton.addEventListener("click", () => {
-      resetRoutineForm();
-    });
-  }
-}
-
-function populateRoutineExerciseSelect() {
-  const select = document.getElementById("routineExerciseSelect");
-
-  if (!select) {
-    return;
-  }
-
-  const exercises = gymPilotData.exercises || [];
-
-  if (exercises.length === 0) {
-    select.innerHTML = `<option value="">Add exercises in the Library first</option>`;
-    select.disabled = true;
-    return;
-  }
-
-  select.disabled = false;
-
-  select.innerHTML = `
-    <option value="">Choose exercise</option>
-    ${exercises.map((exercise) => {
-      return `<option value="${exercise.id}">${escapeHTML(exercise.name)}</option>`;
-    }).join("")}
-  `;
-}
-
-let editingRoutineDraftId = null;
-
-function editRoutineDraftExercise(draftId) {
-   
-  const item = currentRoutineExercises.find(
-    (exercise) => exercise.draftId === draftId
-  );
-
-  if (!item) return;
-
-  const modal = document.getElementById("routineExerciseEditModal");
-
-if (!modal) {
-  alert("Modal NOT found!");
-  return;
-}
-
-
-  editingRoutineDraftId = draftId;
-
-  document.getElementById("routineExerciseEditName").textContent = item.name;
-  document.getElementById("routineEditSets").value = item.plannedSets ?? "";
-  document.getElementById("routineEditReps").value = item.plannedReps ?? "";
-  document.getElementById("routineEditWeight").value = item.plannedWeight ?? "";
-  document.getElementById("routineEditUnit").value = item.plannedUnit || "kg";
-
-  modal.classList.remove("hidden");
-}
-
-function closeRoutineExerciseEditModal() {
-  document.getElementById("routineExerciseEditModal").classList.add("hidden");
-  editingRoutineDraftId = null;
-}
-
-function saveRoutineExerciseEdit() {
-  const item = currentRoutineExercises.find(
-    (exercise) => exercise.draftId === editingRoutineDraftId
-  );
-
-  if (!item) return;
-
-  item.plannedSets = numberOrEmpty(
-    document.getElementById("routineEditSets").value
-  );
-
-  item.plannedReps = numberOrEmpty(
-    document.getElementById("routineEditReps").value
-  );
-
-  item.plannedWeight = document.getElementById("routineEditWeight").value.trim();
-  item.plannedUnit = document.getElementById("routineEditUnit").value || "kg";
-
-  renderRoutineDraftList();
-  closeRoutineExerciseEditModal();
-}
-
-function addExerciseToRoutineDraft() {
-  const exerciseId = document.getElementById("routineExerciseSelect").value;
-
-  if (!exerciseId) {
-    alert("Choose an exercise to add.");
-    return;
-  }
-
-  const exercise = gymPilotData.exercises.find((item) => item.id === exerciseId);
-
-  if (!exercise) {
-    alert("Could not find that exercise.");
-    return;
-  }
-
-  const routineExercise = {
-    draftId: crypto.randomUUID(),
-    exerciseId: exercise.id,
-    name: exercise.name,
-    type: exercise.type || "",
-    muscleGroup: exercise.muscleGroup || "",
-    plannedSets: numberOrEmpty(document.getElementById("routineExerciseSets").value) || exercise.defaultSets || "",
-    plannedReps: numberOrEmpty(document.getElementById("routineExerciseReps").value) || exercise.defaultReps || "",
-    plannedWeight: document.getElementById("routineExerciseWeight").value.trim() || exercise.defaultWeight || "",
-plannedUnit: document.getElementById("routineExerciseUnit").value || exercise.defaultUnit || "kg"
-  };
-
-  currentRoutineExercises.push(routineExercise);
-
-  document.getElementById("routineExerciseSelect").value = "";
-  document.getElementById("routineExerciseSets").value = "";
-  document.getElementById("routineExerciseReps").value = "";
-  document.getElementById("routineExerciseWeight").value = "";
-  document.getElementById("routineExerciseUnit").value = "kg";
-
-  renderRoutineDraftList();
-}
-
-function renderRoutineDraftList() {
-  const draftList = document.getElementById("routineDraftList");
-
-  if (!draftList) {
-    return;
-  }
-
-  if (currentRoutineExercises.length === 0) {
-    draftList.innerHTML = `
-      <div class="empty-state">
-        No exercises added to this routine yet.
-      </div>
-    `;
-    return;
-  }
-
-  draftList.innerHTML = currentRoutineExercises.map((item, index) => {
-    const detailParts = [];
-
-    if (item.plannedSets !== "") {
-      detailParts.push(`${item.plannedSets} sets`);
-    }
-
-    if (item.plannedReps !== "") {
-      detailParts.push(`${item.plannedReps} reps`);
-    }
-
-   if (item.plannedWeight || item.plannedUnit === "bodyweight") {
-  detailParts.push(`${escapeHTML(formatLoadWithUnit(item.plannedWeight, item.plannedUnit))}`);
-}
-
-    return `
-      <div class="routine-draft-item">
-        <div>
-          <strong>${index + 1}. ${escapeHTML(item.name)}</strong>
-          <div class="routine-exercise-detail">
-            ${detailParts.length ? detailParts.join(" • ") : "No plan entered"}
-          </div>
-        </div>
-
-        <div class="routine-draft-actions">
-  <button class="small-button" type="button" onclick="editRoutineDraftExercise('${item.draftId}')">
-    Edit
-  </button>
-
-  <button class="danger-button" type="button" onclick="removeExerciseFromRoutineDraft('${item.draftId}')">
-    Remove
-  </button>
-</div>
-      </div>
-    `;
-  }).join("");
-}
-
-function removeExerciseFromRoutineDraft(draftId) {
-  currentRoutineExercises = currentRoutineExercises.filter((item) => item.draftId !== draftId);
-  renderRoutineDraftList();
-}
-
-function saveRoutineFromForm() {
-  const routineId = document.getElementById("routineId").value;
-
-  const routine = {
-    id: routineId || crypto.randomUUID(),
-    name: document.getElementById("routineName").value.trim(),
-    focus: document.getElementById("routineFocus").value.trim(),
-    notes: document.getElementById("routineNotes").value.trim(),
-    exercises: currentRoutineExercises.map((item) => ({
-      routineExerciseId: item.routineExerciseId || crypto.randomUUID(),
-      exerciseId: item.exerciseId,
-      name: item.name,
-      type: item.type || "",
-      muscleGroup: item.muscleGroup || "",
-      plannedSets: item.plannedSets,
-plannedReps: item.plannedReps,
-plannedWeight: item.plannedWeight,
-plannedUnit: item.plannedUnit || "kg"
-    })),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  };
-
-  if (!routine.name) {
-    alert("Please add a routine name.");
-    return;
-  }
-
-  if (routine.exercises.length === 0) {
-    alert("Please add at least one exercise to the routine.");
-    return;
-  }
-
-  if (routineId) {
-    const existingRoutine = gymPilotData.routines.find((item) => item.id === routineId);
-
-    if (existingRoutine) {
-      routine.createdAt = existingRoutine.createdAt || new Date().toISOString();
-    }
-
-    gymPilotData.routines = gymPilotData.routines.map((item) => {
-      if (item.id === routineId) {
-        return routine;
-      }
-
-      return item;
-    });
-  } else {
-    gymPilotData.routines.push(routine);
-  }
-
-  sortRoutines();
-  saveData();
-
-renderDashboard();
-renderRoutineBuilder();
-populateWorkoutRoutineSelect();
-populatePlannerRoutineSelect();
-renderPlanner();
-resetRoutineForm();
-}
-
-function renderRoutineBuilder() {
-  const routineList = document.getElementById("routineList");
-  const routineSummary = document.getElementById("routineSummary");
-
-  if (!routineList) {
-    return;
-  }
-
-  const routines = gymPilotData.routines || [];
-
-  if (routineSummary) {
-    const count = routines.length;
-    routineSummary.textContent = `${count} saved ${count === 1 ? "routine" : "routines"}`;
-  }
-
-  renderRoutineDraftList();
-
-  if (routines.length === 0) {
-    routineList.innerHTML = `
-      <div class="empty-state">
-        No routines yet. Build your first one above.
-      </div>
-    `;
-    return;
-  }
-
-  routineList.innerHTML = routines.map((routine) => {
-    const routineExercises = routine.exercises || [];
-
-    const exerciseRows = routineExercises.map((item, index) => {
-      const detailParts = [];
-
-      if (item.plannedSets !== "") {
-        detailParts.push(`${item.plannedSets} sets`);
-      }
-
-      if (item.plannedReps !== "") {
-        detailParts.push(`${item.plannedReps} reps`);
-      }
-
-      if (item.plannedWeight || item.plannedUnit === "bodyweight") {
-  detailParts.push(`${escapeHTML(formatLoadWithUnit(item.plannedWeight, item.plannedUnit))}`);
-}
-
-      return `
-        <div class="routine-exercise-row">
-          <strong>${index + 1}. ${escapeHTML(item.name)}</strong>
-          <div class="routine-exercise-detail">
-            ${detailParts.length ? detailParts.join(" • ") : "No plan entered"}
-          </div>
-        </div>
-      `;
-    }).join("");
-
-    return `
-      <article class="routine-item">
-        <div class="routine-item-header">
-          <div>
-            <h4>${escapeHTML(routine.name)}</h4>
-            ${routine.focus ? `<div class="routine-focus">${escapeHTML(routine.focus)}</div>` : ""}
-          </div>
-
-          <span class="stat-chip">${routineExercises.length} ${routineExercises.length === 1 ? "exercise" : "exercises"}</span>
-        </div>
-
-        <div class="routine-exercise-list">
-          ${exerciseRows}
-        </div>
-
-        ${routine.notes ? `<div class="routine-notes">${escapeHTML(routine.notes)}</div>` : ""}
-
-        <div class="routine-actions">
-          <button class="small-button" type="button" onclick="editRoutine('${routine.id}')">
-            Edit
-          </button>
-          <button class="small-button" type="button" onclick="duplicateRoutine('${routine.id}')">
-  Duplicate
-</button>
-
-          <button class="danger-button" type="button" onclick="deleteRoutine('${routine.id}')">
-            Delete
-          </button>
-        </div>
-      </article>
-    `;
-  }).join("");
-}
-
-function editRoutine(routineId) {
-  const routine = gymPilotData.routines.find((item) => item.id === routineId);
-
-  if (!routine) {
-    return;
-  }
-
-  document.getElementById("routineId").value = routine.id;
-  document.getElementById("routineName").value = routine.name || "";
-  document.getElementById("routineFocus").value = routine.focus || "";
-  document.getElementById("routineNotes").value = routine.notes || "";
-
-  currentRoutineExercises = (routine.exercises || []).map((item) => ({
-  draftId: crypto.randomUUID(),
-  routineExerciseId: item.routineExerciseId || crypto.randomUUID(),
-  exerciseId: item.exerciseId,
-  name: item.name,
-  type: item.type || "",
-  muscleGroup: item.muscleGroup || "",
-  plannedSets: item.plannedSets,
-  plannedReps: item.plannedReps,
-  plannedWeight: item.plannedWeight,
-  plannedUnit: item.plannedUnit || "kg"
-}));
-
-  const saveButton = document.getElementById("saveRoutineButton");
-  const cancelButton = document.getElementById("cancelEditRoutineButton");
-
-  if (saveButton) {
-    saveButton.textContent = "Update routine";
-  }
-
-  if (cancelButton) {
-    cancelButton.classList.add("visible");
-  }
-
-  renderRoutineDraftList();
-
-  document.getElementById("routines").scrollIntoView({
-    behavior: "smooth",
-    block: "start"
-  });
-}
-
-function duplicateRoutine(routineId) {
-  const original = gymPilotData.routines.find(
-    (item) => item.id === routineId
-  );
-
-  if (!original) {
-    return;
-  }
-
-  const now = new Date().toISOString();
-
-  const duplicate = {
-    ...original,
-
-    id: crypto.randomUUID(),
-
-    name: `${original.name} (Copy)`,
-
-    exercises: (original.exercises || []).map((exercise) => ({
-      ...exercise,
-      routineExerciseId: crypto.randomUUID()
-    })),
-
-    createdAt: now,
-    updatedAt: now
-  };
-
-  gymPilotData.routines.push(duplicate);
-
-  sortRoutines();
-  saveData();
-
-  renderDashboard();
-  renderRoutineBuilder();
-  populateWorkoutRoutineSelect();
-  populatePlannerRoutineSelect();
-  renderPlanner();
-}
-function deleteRoutine(routineId) {
-  const routine = gymPilotData.routines.find((item) => item.id === routineId);
-
-  if (!routine) {
-    return;
-  }
-
-  const confirmed = confirm(`Delete ${routine.name}?`);
-
-  if (!confirmed) {
-    return;
-  }
-
-  gymPilotData.routines = gymPilotData.routines.filter((item) => item.id !== routineId);
-
-  if (activeWorkout && activeWorkout.routineId === routineId) {
-    activeWorkout = null;
-  }
-
-  saveData();
-
-  renderDashboard();
-  renderRoutineBuilder();
-  populateWorkoutRoutineSelect();
-  renderWorkoutMode();
-  resetRoutineForm();
-}
-
-function resetRoutineForm() {
-  const form = document.getElementById("routineForm");
-  const saveButton = document.getElementById("saveRoutineButton");
-  const cancelButton = document.getElementById("cancelEditRoutineButton");
-
-  if (form) {
-    form.reset();
-  }
-
-  document.getElementById("routineId").value = "";
-
-  currentRoutineExercises = [];
-
-  if (saveButton) {
-    saveButton.textContent = "Save routine";
-  }
-
-  if (cancelButton) {
-    cancelButton.classList.remove("visible");
-  }
-
-  renderRoutineDraftList();
-}
-
-/* ---------------------------
-   Workout Mode
----------------------------- */
-
-function setupWorkoutMode() {
-  const startButton = document.getElementById("startWorkoutButton");
-  const clearButton = document.getElementById("clearWorkoutButton");
-  const saveButton = document.getElementById("saveWorkoutButton");
-
-  if (startButton) {
-    startButton.addEventListener("click", () => {
-      startWorkout();
-    });
-  }
-
-  if (clearButton) {
-    clearButton.addEventListener("click", () => {
-      clearActiveWorkout();
-    });
-  }
-
-  if (saveButton) {
-    saveButton.addEventListener("click", () => {
-      saveCompletedWorkout();
-    });
-  }
-
-  const addExerciseSave = document.getElementById(
-    "workoutAddExerciseSave"
-  );
-
-  if (addExerciseSave) {
-    addExerciseSave.addEventListener(
-      "click",
-      addExerciseToActiveWorkout
-    );
-  }
-
-
-  const addExerciseButton = document.getElementById(
-    "addWorkoutExerciseButton"
-  );
-
-  const addExerciseClose = document.getElementById(
-    "workoutAddExerciseClose"
-  );
-
-  const addExerciseCancel = document.getElementById(
-    "workoutAddExerciseCancel"
-  );
-
-  const addExerciseBackdrop = document.getElementById(
-    "workoutAddExerciseBackdrop"
-  );
-
-  if (addExerciseButton) {
-    addExerciseButton.addEventListener(
-      "click",
-      openWorkoutAddExerciseModal
-    );
-  }
-
-  [addExerciseClose, addExerciseCancel, addExerciseBackdrop]
-    .forEach(button => {
-      if (button) {
-        button.addEventListener(
-          "click",
-          closeWorkoutAddExerciseModal
-        );
-      }
-    });
-
-  const swapClose = document.getElementById(
-    "workoutSwapExerciseClose"
-  );
-
-  const swapCancel = document.getElementById(
-    "workoutSwapExerciseCancel"
-  );
-
-  const swapBackdrop = document.getElementById(
-    "workoutSwapExerciseBackdrop"
-  );
-
-  const swapSave = document.getElementById(
-    "workoutSwapExerciseSave"
-  );
-
-  if (swapSave) {
-    swapSave.addEventListener(
-      "click",
-      saveWorkoutExerciseSwap
-    );
-  }
-
-
-  [swapClose, swapCancel, swapBackdrop].forEach(button => {
-    if (button) {
-      button.addEventListener(
-        "click",
-        closeWorkoutSwapExerciseModal
-      );
-    }
-  });
-
-  // REST TIMER BUTTON CONTROLS
-
-  const restTimerStartPauseButton = document.getElementById(
-    "restTimerStartPause"
-  );
-
-  const restTimerResetButton = document.getElementById(
-    "restTimerReset"
-  );
-
-  if (restTimerStartPauseButton) {
-    restTimerStartPauseButton.addEventListener(
-      "click",
-      startPauseRestTimer
-    );
-  }
-
-  if (restTimerResetButton) {
-    restTimerResetButton.addEventListener(
-      "click",
-      resetRestTimer
-    );
-  }
-
-  document.querySelectorAll("[data-rest-seconds]").forEach(button => {
-    button.addEventListener("click", () => {
-      selectRestTimerDuration(
-        Number(button.dataset.restSeconds)
-      );
-    });
-  });
-
-
-  // FLOATING REST TIMER BUTTONS
-
-  const floatingStartButton = document.getElementById(
-    "floatingRestTimerStartPause"
-  );
-
-  const floatingResetButton = document.getElementById(
-    "floatingRestTimerReset"
-  );
-
-  if (floatingStartButton) {
-    floatingStartButton.addEventListener(
-      "click",
-      startPauseRestTimer
-    );
-  }
-
-  if (floatingResetButton) {
-    floatingResetButton.addEventListener(
-      "click",
-      resetRestTimer
-    );
-  }
-
-  renderRestTimer();
-
-  window.addEventListener(
-    "scroll",
-    updateFloatingRestTimerVisibility,
-    { passive: true }
-  );
-
-  window.addEventListener(
-    "resize",
-    updateFloatingRestTimerVisibility
-  );
-
-
-}
-
-function setDefaultWorkoutDate() {
-  const workoutDate = document.getElementById("workoutDate");
-
-  if (!workoutDate) {
-    return;
-  }
-
-  workoutDate.value = new Date().toISOString().slice(0, 10);
-}
-
-function populateWorkoutRoutineSelect() {
-  const select = document.getElementById("workoutRoutineSelect");
-
-  if (!select) {
-    return;
-  }
-
-  const routines = gymPilotData.routines || [];
-
-  if (routines.length === 0) {
-    select.innerHTML = `<option value="">Create a routine first</option>`;
-    select.disabled = true;
-    return;
-  }
-
-  select.disabled = false;
-
-  select.innerHTML = `
-    <option value="">Choose routine</option>
-    ${routines.map((routine) => {
-      return `<option value="${routine.id}">${escapeHTML(routine.name)}</option>`;
-    }).join("")}
-  `;
-}
-
-function startWorkout() {
-  const routineId = document.getElementById("workoutRoutineSelect").value;
-  const workoutDate = document.getElementById("workoutDate").value || new Date().toISOString().slice(0, 10);
-
-  if (!routineId) {
-    alert("Choose a routine to start.");
-    return;
-  }
-
-  const routine = gymPilotData.routines.find((item) => item.id === routineId);
-
-  if (!routine) {
-    alert("Could not find that routine.");
-    return;
-  }
-
-  activeWorkout = {
-  id: crypto.randomUUID(),
-  profile: getActiveProfile(),
-  routineId: routine.id,
-  routineName: routine.name,
-  date: workoutDate,
-  startedAt: new Date().toISOString(),
-    exercises: (routine.exercises || []).map((exercise) => {
-      const setCount = Number(exercise.plannedSets) || 1;
-
-      return {
-        workoutExerciseId: crypto.randomUUID(),
-        exerciseId: exercise.exerciseId,
-        name: exercise.name,
-        type: exercise.type || "",
-        muscleGroup: exercise.muscleGroup || "",
-        plannedSets: exercise.plannedSets,
-plannedReps: exercise.plannedReps,
-plannedWeight: exercise.plannedWeight,
-plannedUnit: exercise.plannedUnit || "kg",
-sets: Array.from({ length: setCount }, (_, index) => ({
-  setId: crypto.randomUUID(),
-  setNumber: index + 1,
-  completed: false,
-  actualReps: exercise.plannedReps || "",
-  actualWeight: exercise.plannedWeight || "",
-  actualUnit: exercise.plannedUnit || "kg"
-}))
-      };
-    })
-  };
-
-    saveActiveWorkout();
-  renderWorkoutMode();
-}
-
-/* =====================================
-   GYMPILOT — REST TIMER ENGINE
-   ===================================== */
-
-let restTimerDuration = 90;
-let restTimerRemaining = 90;
-let restTimerEndTime = null;
-let restTimerInterval = null;
-let restTimerRunning = false;
-
-function formatRestTime(seconds) {
-  const safeSeconds = Math.max(0, Math.ceil(seconds));
-  const minutes = Math.floor(safeSeconds / 60);
-  const remainder = safeSeconds % 60;
-
-  return (
-    String(minutes).padStart(2, "0") +
-    ":" +
-    String(remainder).padStart(2, "0")
-  );
-}
-
-function renderRestTimer() {
-  const display = document.getElementById("restTimerDisplay");
-  const startButton = document.getElementById("restTimerStartPause");
-  const status = document.getElementById("restTimerStatus");
-
-  if (!display || !startButton || !status) return;
-
-  display.textContent = formatRestTime(restTimerRemaining);
-
-  // Keep the floating timer synchronised
-  const floatingDisplay = document.getElementById(
-    "floatingRestTimerDisplay"
-  );
-
-  const floatingStartButton = document.getElementById(
-    "floatingRestTimerStartPause"
-  );
-
-  if (floatingDisplay) {
-    floatingDisplay.textContent = formatRestTime(restTimerRemaining);
-
-    floatingDisplay.classList.toggle(
-      "finished",
-      !restTimerRunning && restTimerRemaining === 0
-    );
-  }
-
-  if (floatingStartButton) {
-    floatingStartButton.textContent = restTimerRunning
-      ? "Pause"
-      : restTimerRemaining === 0
-        ? "Start again"
-        : restTimerRemaining < restTimerDuration
-          ? "Resume"
-          : "Start";
-  }
-
-
-  display.classList.toggle(
-    "finished",
-    !restTimerRunning && restTimerRemaining === 0
-  );
-
-  startButton.textContent = restTimerRunning
-    ? "Pause"
-    : restTimerRemaining === 0
-      ? "Start again"
-      : restTimerRemaining < restTimerDuration
-        ? "Resume"
-        : "Start";
-
-  status.textContent = restTimerRunning
-    ? "Rest countdown running..."
-    : restTimerRemaining === 0
-      ? "Rest complete! Ready for your next set."
-      : restTimerRemaining < restTimerDuration
-        ? "Timer paused."
-        : "Ready when you are.";
-
-  document.querySelectorAll("[data-rest-seconds]").forEach(button => {
-    button.classList.toggle(
-      "active",
-      Number(button.dataset.restSeconds) === restTimerDuration
-    );
-  });
-}
-
-function tickRestTimer() {
-  if (!restTimerRunning || restTimerEndTime === null) return;
-
-  restTimerRemaining = Math.max(
-    0,
-    Math.ceil((restTimerEndTime - Date.now()) / 1000)
-  );
-
-  
-  if (restTimerRemaining === 0) {
-    restTimerRunning = false;
-    restTimerEndTime = null;
-    clearInterval(restTimerInterval);
-    restTimerInterval = null;
-
-    // Double vibration when rest finishes
-    if ("vibrate" in navigator) {
-      navigator.vibrate([200, 120, 200]);
-    }
-  }
-
-
-  renderRestTimer();
-}
-
-function startPauseRestTimer() {
-  if (restTimerRunning) {
-    tickRestTimer();
-
-    if (!restTimerRunning) return;
-
-    restTimerRunning = false;
-    restTimerEndTime = null;
-    clearInterval(restTimerInterval);
-    restTimerInterval = null;
-
-    renderRestTimer();
-    return;
-  }
-
-  if (restTimerRemaining === 0) {
-    restTimerRemaining = restTimerDuration;
-  }
-
-  restTimerEndTime = Date.now() + restTimerRemaining * 1000;
-  restTimerRunning = true;
-
-  clearInterval(restTimerInterval);
-  restTimerInterval = setInterval(tickRestTimer, 250);
-
-  renderRestTimer();
-}
-
-function resetRestTimer() {
-  clearInterval(restTimerInterval);
-  restTimerInterval = null;
-  restTimerRunning = false;
-  restTimerEndTime = null;
-  restTimerRemaining = restTimerDuration;
-
-  renderRestTimer();
-}
-
-function selectRestTimerDuration(seconds) {
-  if (![30, 60, 90, 120, 180].includes(seconds)) return;
-
-  restTimerDuration = seconds;
-  resetRestTimer();
-}
-
-
-function updateFloatingRestTimerVisibility() {
-  const floatingTimer = document.getElementById(
-    "floatingRestTimer"
-  );
-
-  const mainTimer = document.getElementById(
-    "workoutRestTimer"
-  );
-
-  if (!floatingTimer || !mainTimer) return;
-
-  if (!activeWorkout || mainTimer.classList.contains("hidden")) {
-    floatingTimer.classList.add("hidden");
-    return;
-  }
-
-  const timerPosition = mainTimer.getBoundingClientRect();
-
-  // Show floating timer once main timer has scrolled above screen
-  const shouldFloat = timerPosition.bottom < 0;
-
-  floatingTimer.classList.toggle("hidden", !shouldFloat);
-}
-
-
-function renderWorkoutMode() {
-  const title = document.getElementById("activeWorkoutTitle");
-  const summary = document.getElementById("activeWorkoutSummary");
-  const list = document.getElementById("activeWorkoutList");
-  const saveButton = document.getElementById("saveWorkoutButton");
-  const addActions = document.getElementById("workoutAddActions");
-  const restTimer = document.getElementById("workoutRestTimer");
-
-
-  if (!title || !summary || !list || !saveButton) {
-    return;
-  }
-
-  if (!activeWorkout) {
-    title.textContent = "No active workout";
-    summary.textContent = "Choose a routine above to begin.";
-    list.innerHTML = "";
-    
-    saveButton.classList.remove("visible");
-
-    if (addActions) {
-      addActions.classList.add("hidden");
-    }
-    if (restTimer) {
-  restTimer.classList.add("hidden");
-}
-updateFloatingRestTimerVisibility();
-    return;
-
-  }
-
-  title.textContent = activeWorkout.routineName;
-  summary.textContent =
-    `Training as ${profileLabel(activeWorkout.profile)} • Workout date: ${formatDate(activeWorkout.date)}`;
-
-  saveButton.classList.add("visible");
-  if (addActions) {
-    addActions.classList.remove("hidden");
-  }
-  if (restTimer) {
-  restTimer.classList.remove("hidden");
-}
-
-
- 
-  list.innerHTML = activeWorkout.exercises.map((exercise) => {
-    const setRows = exercise.sets.map((set) => {
-      return `
-        <div class="workout-set-row">
-          <label class="workout-set-check">
-            <input
-              type="checkbox"
-              ${set.completed ? "checked" : ""}
-              onchange="updateWorkoutSet('${exercise.workoutExerciseId}', '${set.setId}', 'completed', this.checked)"
-            />
-            Set ${set.setNumber}
-          </label>
-
-          <label>
-            Reps
-            <input
-              type="number"
-              min="0"
-              step="1"
-              value="${escapeHTML(set.actualReps)}"
-              oninput="updateWorkoutSet('${exercise.workoutExerciseId}', '${set.setId}', 'actualReps', this.value)"
-            />
-          </label>
-
-          <label>
-            KGs / Time
-            <input
-              type="text"
-              value="${escapeHTML(set.actualWeight)}"
-              oninput="updateWorkoutSet('${exercise.workoutExerciseId}', '${set.setId}', 'actualWeight', this.value)"
-            />
-          </label>
-        </div>
-      `;
-    }).join("");
-
-
-    return `
-      <article class="workout-exercise-card">
-
-       
-        <div class="workout-exercise-heading">
-          <h4>${escapeHTML(exercise.name)}</h4>
-
-          <div class="workout-exercise-actions">
-
-            <button
-              type="button"
-              class="secondary-button workout-swap-button"
-              onclick="openWorkoutSwapExerciseModal('${exercise.workoutExerciseId}')"
-              ${exercise.sets.some(set => set.completed) ? "disabled" : ""}
-              title="${exercise.sets.some(set => set.completed)
-                ? "Completed sets cannot be swapped. Add another exercise instead."
-                : "Swap this exercise"}"
-            >
-              Swap exercise
-            </button>
-
-            <button
-              type="button"
-              class="secondary-button workout-remove-button"
-              onclick="removeActiveWorkoutExercise('${exercise.workoutExerciseId}')"
-            >
-              Remove exercise
-            </button>
-
-          </div>
-        </div>
-
-
-        <div class="routine-exercise-detail">
-          Planned: ${exercise.plannedSets || "?"} sets
-          ${exercise.plannedReps ? ` • ${escapeHTML(exercise.plannedReps)} reps` : ""}
-          ${exercise.plannedWeight || exercise.plannedUnit === "bodyweight"
-            ? ` • ${escapeHTML(formatLoadWithUnit(exercise.plannedWeight, exercise.plannedUnit))}`
-            : ""}
-        </div>
-
-       
-        <div class="workout-set-list">
-          ${setRows}
-        </div>
-
-        <!-- LIVE WORKOUT SET CONTROLS -->
-        <div class="form-actions workout-set-actions">
-
-          <button
-            type="button"
-            class="secondary-button"
-            onclick="removeActiveWorkoutSet('${exercise.workoutExerciseId}')"
-          >
-            − Remove set
-          </button>
-
-          <button
-            type="button"
-            class="secondary-button"
-            onclick="addActiveWorkoutSet('${exercise.workoutExerciseId}')"
-          >
-            + Add set
-          </button>
-
-        </div>
-
-      </article>
-
-    `;
-  }).join("");
-    updateFloatingRestTimerVisibility();
-}
-
-
-let workoutExerciseToSwapId = null;
-
-function openWorkoutSwapExerciseModal(workoutExerciseId) {
-  if (!activeWorkout) return;
-
-  const exercise = activeWorkout.exercises.find(
-    item => item.workoutExerciseId === workoutExerciseId
-  );
-
-  if (!exercise) return;
-
-  if (exercise.sets.some(set => set.completed)) {
-    alert("This exercise has completed sets. Add another exercise instead.");
-    return;
-  }
-
-  const modal = document.getElementById("workoutSwapExerciseModal");
-  const select = document.getElementById("workoutSwapExerciseSelect");
-
-  if (!modal || !select) return;
-
-  workoutExerciseToSwapId = workoutExerciseId;
-
-  document.getElementById("workoutSwapExerciseName").textContent =
-    "Replacing: " + exercise.name;
-
-  const libraryExercises = gymPilotData.exercises || [];
-
-  select.innerHTML = `
-    <option value="">Choose replacement exercise</option>
-    ${libraryExercises.map(item => `
-      <option value="${escapeHTML(item.id)}">
-        ${escapeHTML(item.name)}
-      </option>
-    `).join("")}
-  `;
-
-  select.disabled = libraryExercises.length === 0;
-
-  document.getElementById("workoutSwapSets").value =
-    exercise.sets.length;
-
-  document.getElementById("workoutSwapReps").value =
-    exercise.plannedReps ?? "";
-
-  document.getElementById("workoutSwapWeight").value =
-    exercise.plannedWeight ?? "";
-
-  document.getElementById("workoutSwapUnit").value =
-    exercise.plannedUnit || "kg";
-
-  modal.classList.remove("hidden");
-}
-
-function closeWorkoutSwapExerciseModal() {
-  const modal = document.getElementById("workoutSwapExerciseModal");
-
-  if (modal) {
-    modal.classList.add("hidden");
-  }
-
-  workoutExerciseToSwapId = null;
-}
-
-
-function openWorkoutAddExerciseModal() {
-  if (!activeWorkout) {
-    return;
-  }
-
-  const modal = document.getElementById("workoutAddExerciseModal");
-  const select = document.getElementById("workoutAddExerciseSelect");
-
-  if (!modal || !select) {
-    return;
-  }
-
-  const exercises = gymPilotData.exercises || [];
-
-  select.innerHTML = `
-    <option value="">Choose exercise</option>
-    ${exercises.map(exercise => `
-      <option value="${escapeHTML(exercise.id)}">
-        ${escapeHTML(exercise.name)}
-      </option>
-    `).join("")}
-  `;
-
-  select.disabled = exercises.length === 0;
-
-  document.getElementById("workoutAddSets").value = 3;
-  document.getElementById("workoutAddReps").value = 10;
-  document.getElementById("workoutAddWeight").value = "";
-  document.getElementById("workoutAddUnit").value = "kg";
-
-  modal.classList.remove("hidden");
-}
-
-function closeWorkoutAddExerciseModal() {
-  const modal = document.getElementById("workoutAddExerciseModal");
-
-  if (modal) {
-    modal.classList.add("hidden");
-  }
-}
-
-function addExerciseToActiveWorkout() {
-  if (!activeWorkout) {
-    return;
-  }
-
-  const exerciseId = document.getElementById(
-    "workoutAddExerciseSelect"
-  ).value;
-
-  const setsInput = document.getElementById("workoutAddSets");
-  const repsInput = document.getElementById("workoutAddReps");
-  const weightInput = document.getElementById("workoutAddWeight");
-  const unitInput = document.getElementById("workoutAddUnit");
-
-  const exercise = (gymPilotData.exercises || []).find(
-    item => item.id === exerciseId
-  );
-
-  if (!exercise) {
-    alert("Please choose an exercise.");
-    return;
-  }
-
-  const plannedSets = Number(setsInput.value);
-  const plannedReps = repsInput.value;
-  const plannedWeight = weightInput.value;
-  const plannedUnit = unitInput.value;
-
-  if (
-    !Number.isInteger(plannedSets) ||
-    plannedSets < 1 ||
-    plannedSets > 100
-  ) {
-    alert("Please enter a valid number of sets.");
-    return;
-  }
-
-  if (
-    plannedReps === "" ||
-    !Number.isInteger(Number(plannedReps)) ||
-    Number(plannedReps) < 0
-  ) {
-    alert("Please enter valid planned reps.");
-    return;
-  }
-
-  if (
-    plannedWeight !== "" &&
-    (!Number.isFinite(Number(plannedWeight)) ||
-      Number(plannedWeight) < 0)
-  ) {
-    alert("Please enter a valid planned load.");
-    return;
-  }
-
-  const newExercise = {
-    workoutExerciseId: crypto.randomUUID(),
-    exerciseId: exercise.id,
-    name: exercise.name,
-    type: exercise.type || "",
-    muscleGroup: exercise.muscleGroup || "",
-    plannedSets,
-    plannedReps,
-    plannedWeight,
-    plannedUnit,
-
-    sets: Array.from({ length: plannedSets }, (_, index) => ({
-      setId: crypto.randomUUID(),
-      setNumber: index + 1,
-      completed: false,
-      actualReps: plannedReps,
-      actualWeight: plannedWeight,
-      actualUnit: plannedUnit
-    }))
-  };
-
-  activeWorkout.exercises.push(newExercise);
-
-  saveActiveWorkout();
-  renderWorkoutMode();
-  closeWorkoutAddExerciseModal();
-  updateSaveStatus("Saved");
-}
-
-function saveWorkoutExerciseSwap() {
-  if (!activeWorkout || !workoutExerciseToSwapId) return;
-
-  const exerciseIndex = activeWorkout.exercises.findIndex(
-    item => item.workoutExerciseId === workoutExerciseToSwapId
-  );
-
-  if (exerciseIndex === -1) return;
-
-  const oldExercise = activeWorkout.exercises[exerciseIndex];
-
-  // Protect completed sets
-  if (oldExercise.sets.some(set => set.completed)) {
-    alert("This exercise has completed sets. Add another exercise instead.");
-    closeWorkoutSwapExerciseModal();
-    return;
-  }
-
-  const exerciseId = document.getElementById(
-    "workoutSwapExerciseSelect"
-  ).value;
-
-  const replacement = (gymPilotData.exercises || []).find(
-    item => item.id === exerciseId
-  );
-
-  if (!replacement) {
-    alert("Please choose a replacement exercise.");
-    return;
-  }
-
-  const setsValue = document.getElementById("workoutSwapSets").value;
-  const repsValue = document.getElementById("workoutSwapReps").value;
-  const weightValue = document.getElementById("workoutSwapWeight").value;
-  const unitValue = document.getElementById("workoutSwapUnit").value;
-
-  const plannedSets = Number(setsValue);
-
-  if (
-    setsValue.trim() === "" ||
-    !Number.isInteger(plannedSets) ||
-    plannedSets < 1 ||
-    plannedSets > 100
-  ) {
-    alert("Please enter a valid number of sets.");
-    return;
-  }
-
-  if (
-    repsValue !== "" &&
-    (!Number.isInteger(Number(repsValue)) ||
-      Number(repsValue) < 0)
-  ) {
-    alert("Please enter valid planned reps.");
-    return;
-  }
-
-  if (
-    weightValue !== "" &&
-    (!Number.isFinite(Number(weightValue)) ||
-      Number(weightValue) < 0)
-  ) {
-    alert("Please enter a valid planned load.");
-    return;
-  }
-
-  if (!["kg", "lb", "bodyweight"].includes(unitValue)) {
-    alert("Please choose a valid unit.");
-    return;
-  }
-
-  const newExercise = {
-    workoutExerciseId: crypto.randomUUID(),
-    exerciseId: replacement.id,
-    name: replacement.name,
-    type: replacement.type || "",
-    muscleGroup: replacement.muscleGroup || "",
-    plannedSets,
-    plannedReps: repsValue,
-    plannedWeight: weightValue,
-    plannedUnit: unitValue,
-
-    sets: Array.from({ length: plannedSets }, (_, index) => ({
-      setId: crypto.randomUUID(),
-      setNumber: index + 1,
-      completed: false,
-      actualReps: repsValue,
-      actualWeight: weightValue,
-      actualUnit: unitValue
-    }))
-  };
-
-  // Replace at the same position
-  activeWorkout.exercises[exerciseIndex] = newExercise;
-
-  saveActiveWorkout();
-  renderWorkoutMode();
-  closeWorkoutSwapExerciseModal();
-  updateSaveStatus("Saved");
-}
-
-
-function addActiveWorkoutSet(workoutExerciseId) {
-  if (!activeWorkout) return;
-
-  const exercise = activeWorkout.exercises.find(
-    item => item.workoutExerciseId === workoutExerciseId
-  );
-
-  if (!exercise) return;
-
-  const lastSet = exercise.sets[exercise.sets.length - 1];
-
-  const newSet = {
-    setId: crypto.randomUUID(),
-    setNumber: exercise.sets.length + 1,
-    completed: false,
-    actualReps: lastSet ? lastSet.actualReps : (exercise.plannedReps || ""),
-    actualWeight: lastSet ? lastSet.actualWeight : (exercise.plannedWeight || ""),
-    actualUnit: lastSet ? lastSet.actualUnit : (exercise.plannedUnit || "kg")
-  };
-
-  exercise.sets.push(newSet);
-  exercise.plannedSets = exercise.sets.length;
-
-  saveActiveWorkout();
-  renderWorkoutMode();
-  updateSaveStatus("Saved");
-}
-
-
-function removeActiveWorkoutSet(workoutExerciseId) {
-  if (!activeWorkout) return;
-
-  const exercise = activeWorkout.exercises.find(
-    item => item.workoutExerciseId === workoutExerciseId
-  );
-
-  if (!exercise) return;
-
-  if (exercise.sets.length <= 1) {
-    alert("An exercise must have at least one set.");
-    return;
-  }
-
-  const lastSet = exercise.sets[exercise.sets.length - 1];
-
-  if (lastSet.completed) {
-    alert("The last set is completed and cannot be removed.");
-    return;
-  }
-
-  exercise.sets.pop();
-  exercise.plannedSets = exercise.sets.length;
-
-  saveActiveWorkout();
-  renderWorkoutMode();
-  updateSaveStatus("Saved");
-}
-
-function removeActiveWorkoutExercise(workoutExerciseId) {
-  if (!activeWorkout) {
-    return;
-  }
-
-  const exercise = activeWorkout.exercises.find(
-    item => item.workoutExerciseId === workoutExerciseId
-  );
-
-  if (!exercise) {
-    return;
-  }
-
-  const hasCompletedSets = exercise.sets.some(
-    set => set.completed
-  );
-
-  const warning = hasCompletedSets
-    ? "\n\nWARNING: This exercise has completed sets. Removing it will also remove those logged sets from this workout."
-    : "";
-
-  const confirmed = confirm(
-    "Remove " + exercise.name + " from this workout?" +
-    warning +
-    "\n\nYour original saved routine will not be changed."
-  );
-
-  if (!confirmed) {
-    return;
-  }
-
-  activeWorkout.exercises = activeWorkout.exercises.filter(
-    item => item.workoutExerciseId !== workoutExerciseId
-  );
-
-  saveActiveWorkout();
-  renderWorkoutMode();
-  updateSaveStatus("Saved");
-}
-
-
-
-function updateWorkoutSet(workoutExerciseId, setId, field, value) {
-  if (!activeWorkout) {
-    return;
-  }
-
-  activeWorkout.exercises = activeWorkout.exercises.map((exercise) => {
-    if (exercise.workoutExerciseId !== workoutExerciseId) {
-      return exercise;
-    }
-
-    return {
-      ...exercise,
-      sets: exercise.sets.map((set) => {
-        if (set.setId !== setId) {
-          return set;
-        }
-
-        return {
-          ...set,
-          [field]: field === "completed" ? Boolean(value) : value
-        };
-      })
-    };
-  });
-
-    saveActiveWorkout();
-
-  if (field === "completed") {
-    renderWorkoutMode();
-  }
-}
-
-function clearActiveWorkout() {
-  if (!activeWorkout) {
-    renderWorkoutMode();
-    return;
-  }
-
-  const confirmed = confirm("Clear the active workout? Unsaved results will be lost.");
-
-  if (!confirmed) {
-    return;
-  }
-
-   activeWorkout = null;
-  clearSavedActiveWorkout();
-  renderWorkoutMode();
-}
-
-/* =========================
-   WORKOUT CELEBRATION
-========================= */
-
-const workoutCongratulations = [
-  "Workout smashed! 💪",
-  "Another one in the books! 🔥",
-  "Outstanding effort! 🏆",
-  "You absolute machine! 💥",
-  "Stronger every session! 💪",
-  "That's how it's done! 🎯",
-  "You showed up and delivered! 👊",
-  "Brilliant work. Keep it going! ⭐"
-];
-
-function showWorkoutCelebration(completedWorkout, newPersonalBests) {
-  const modal = document.getElementById("workoutCelebrationModal");
-  if (!modal) return;
-
-  const exercises = completedWorkout.exercises || [];
-
-  const completedSets = exercises.reduce((total, exercise) => {
-    return total + exercise.sets.filter((set) => set.completed).length;
-  }, 0);
-
-  const message = workoutCongratulations[
-    Math.floor(Math.random() * workoutCongratulations.length)
-  ];
-
-  document.getElementById("workoutCelebrationTitle").textContent =
-    "Workout complete! 🎉";
-
-  document.getElementById("workoutCelebrationMessage").textContent = message;
-
-  document.getElementById("celebrationExercises").textContent =
-    exercises.length;
-
-  document.getElementById("celebrationSets").textContent =
-    completedSets;
-
-  document.getElementById("celebrationPBCount").textContent =
-    newPersonalBests.length;
-
-  const pbSection = document.getElementById("celebrationPBSection");
-  const pbList = document.getElementById("celebrationPBList");
-
-  if (newPersonalBests.length > 0) {
-    pbList.innerHTML = newPersonalBests.map((pb) => `
-      <div class="celebration-pb-item">
-        🏆 ${escapeHTML(pb.exerciseName)}:
-        ${escapeHTML(pb.label)} —
-        ${escapeHTML(pb.displayValue)}
-      </div>
-    `).join("");
-
-    pbSection.classList.remove("hidden");
-  } else {
-    pbList.innerHTML = "";
-    pbSection.classList.add("hidden");
-  }
-
-  modal.classList.remove("hidden");
-  launchWorkoutConfetti();
-}
-
-function closeWorkoutCelebration() {
-  const modal = document.getElementById("workoutCelebrationModal");
-  if (modal) modal.classList.add("hidden");
-
-  const confetti = document.getElementById("workoutConfetti");
-  if (confetti) confetti.innerHTML = "";
-}
-
-function launchWorkoutConfetti() {
-  const container = document.getElementById("workoutConfetti");
-  if (!container) return;
-
-  container.innerHTML = "";
-
-  const colors = [
-    "#ffcc00", "#ff6b6b", "#4ecdc4",
-    "#6c5ce7", "#74b9ff", "#fd79a8"
-  ];
-
-  for (let i = 0; i < 55; i++) {
-    const piece = document.createElement("span");
-    piece.className = "workout-confetti-piece";
-
-    piece.style.left = `${Math.random() * 100}%`;
-    piece.style.backgroundColor = colors[i % colors.length];
-    piece.style.animationDelay = `${Math.random() * 1.2}s`;
-    piece.style.animationDuration = `${2 + Math.random() * 2}s`;
-
-    container.appendChild(piece);
-  }
+:root {
+    --bg-start: #0284c7;
+      --bg-end: #0ea5e9;
+        --bg-glow-one: rgba(186, 230, 253, 0.42);
+          --bg-glow-two: rgba(7, 89, 133, 0.35);
+
+            --panel: rgba(15, 23, 42, 0.78);
+              --panel-light: rgba(30, 41, 59, 0.82);
+
+                --text: #f9fafb;
+                  --muted: #d1d5db;
+
+                    --accent: #38bdf8;
+                      --accent-strong: #0284c7;
+                        --accent-soft: rgba(56, 189, 248, 0.16);
+                          --accent-border: rgba(56, 189, 248, 0.38);
+
+                            --success: #22c55e;
+                              --warning: #f59e0b;
+                                --danger: #ef4444;
+
+                                  --border: rgba(255, 255, 255, 0.18);
+                                    --shadow: 0 20px 55px rgba(0, 0, 0, 0.36);
+
+                                      --button-text: #082f49;
+                                      }
+
+                                      * {
+                                        box-sizing: border-box;
+                                        }
+
+                                        body {
+                                          margin: 0;
+                                            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+                                              background:
+                                                  radial-gradient(circle at top left, var(--bg-glow-one), transparent 38%),
+                                                      radial-gradient(circle at bottom right, var(--bg-glow-two), transparent 36%),
+                                                          linear-gradient(160deg, var(--bg-start) 0%, var(--bg-end) 100%);
+                                                            color: var(--text);
+                                                              min-height: 100vh;
+                                                                background-attachment: fixed;
+                                                                }
+
+                                                                button,
+                                                                input,
+                                                                select,
+                                                                textarea {
+                                                                  font: inherit;
+                                                                  }
+
+                                                                  button {
+                                                                    cursor: pointer;
+                                                                    }
+
+                                                                    .app-shell {
+                                                                      width: min(1100px, 100%);
+                                                                        margin: 0 auto;
+                                                                          padding: 16px;
+                                                                          }
+
+                                                                          .app-header {
+                                                                            display: flex;
+                                                                              align-items: center;
+                                                                                justify-content: space-between;
+                                                                                  gap: 16px;
+                                                                                    margin-bottom: 18px;
+                                                                                    }
+
+                                                                                    .app-header h1 {
+                                                                                      margin: 0;
+                                                                                        font-size: clamp(2rem, 8vw, 3.2rem);
+                                                                                          letter-spacing: -0.06em;
+                                                                                          }
+
+                                                                                          .app-header p {
+                                                                                            margin: 4px 0 0;
+                                                                                              color: var(--muted);
+                                                                                              }
+
+                                                                                              .status-pill {
+                                                                                                background: var(--accent-soft);
+                                                                                                  color: #ffffff;
+                                                                                                    border: 1px solid var(--accent-border);
+                                                                                                      padding: 8px 12px;
+                                                                                                        border-radius: 999px;
+                                                                                                          font-size: 0.85rem;
+                                                                                                            white-space: nowrap;
+                                                                                                            }
+
+                                                                                                            .tab-bar {
+                                                                                                              display: flex;
+                                                                                                                gap: 8px;
+                                                                                                                  overflow-x: auto;
+                                                                                                                    padding: 8px;
+                                                                                                                      margin-bottom: 16px;
+                                                                                                                        border: 1px solid var(--border);
+                                                                                                                          background: rgba(15, 23, 42, 0.68);
+                                                                                                                            border-radius: 18px;
+                                                                                                                              backdrop-filter: blur(14px);
+                                                                                                                                box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22);
+                                                                                                                                }
+
+                                                                                                                                .tab-button {
+                                                                                                                                  border: 0;
+                                                                                                                                    color: var(--muted);
+                                                                                                                                      background: transparent;
+                                                                                                                                        padding: 10px 14px;
+                                                                                                                                          border-radius: 999px;
+                                                                                                                                            white-space: nowrap;
+                                                                                                                                            }
+
+                                                                                                                                            .tab-button.active {
+                                                                                                                                              background: var(--accent);
+                                                                                                                                                color: var(--button-text);
+                                                                                                                                                  font-weight: 800;
+                                                                                                                                                  }
+
+                                                                                                                                                  .screen {
+                                                                                                                                                    display: none;
+                                                                                                                                                    }
+
+                                                                                                                                                    .screen.active {
+                                                                                                                                                      display: block;
+                                                                                                                                                      }
+
+                                                                                                                                                      .card {
+                                                                                                                                                        background: linear-gradient(180deg, rgba(15, 23, 42, 0.82), rgba(15, 23, 42, 0.74));
+                                                                                                                                                          border: 1px solid var(--border);
+                                                                                                                                                            border-radius: 22px;
+                                                                                                                                                              padding: 18px;
+                                                                                                                                                                box-shadow: var(--shadow);
+                                                                                                                                                                  margin-bottom: 14px;
+                                                                                                                                                                    backdrop-filter: blur(14px);
+                                                                                                                                                                    }
+
+                                                                                                                                                                    .card h2,
+                                                                                                                                                                    .card h3 {
+                                                                                                                                                                      margin-top: 0;
+                                                                                                                                                                      }
+
+                                                                                                                                                                      .card p {
+                                                                                                                                                                        color: var(--muted);
+                                                                                                                                                                          line-height: 1.5;
+                                                                                                                                                                          }
+
+                                                                                                                                                                          .hero-card {
+                                                                                                                                                                            min-height: 180px;
+                                                                                                                                                                              display: flex;
+                                                                                                                                                                                flex-direction: column;
+                                                                                                                                                                                  justify-content: center;
+                                                                                                                                                                                  }
+
+                                                                                                                                                                                  .grid-two {
+                                                                                                                                                                                    display: grid;
+                                                                                                                                                                                      grid-template-columns: repeat(2, minmax(0, 1fr));
+                                                                                                                                                                                        gap: 14px;
+                                                                                                                                                                                        }
+
+                                                                                                                                                                                        .primary-button {
+                                                                                                                                                                                          align-self: flex-start;
+                                                                                                                                                                                            border: 0;
+                                                                                                                                                                                              background: var(--accent);
+                                                                                                                                                                                                color: var(--button-text);
+                                                                                                                                                                                                  padding: 12px 16px;
+                                                                                                                                                                                                    border-radius: 14px;
+                                                                                                                                                                                                      font-weight: 800;
+                                                                                                                                                                                                        box-shadow: 0 10px 25px var(--accent-soft);
+                                                                                                                                                                                                        }
+
+                                                                                                                                                                                                        .primary-button:active {
+                                                                                                                                                                                                          transform: translateY(1px);
+                                                                                                                                                                                                          }
+
+                                                                                                                                                                                                          @media (max-width: 700px) {
+                                                                                                                                                                                                            .app-shell {
+                                                                                                                                                                                                                padding: 12px;
+                                                                                                                                                                                                                  }
+
+                                                                                                                                                                                                                    .app-header {
+                                                                                                                                                                                                                        align-items: flex-start;
+                                                                                                                                                                                                                          }
+
+                                                                                                                                                                                                                            .grid-two {
+                                                                                                                                                                                                                                grid-template-columns: 1fr;
+                                                                                                                                                                                                                                  }
+
+                                                                                                                                                                                                                                    .card {
+                                                                                                                                                                                                                                        border-radius: 18px;
+                                                                                                                                                                                                                                          }
+                                                                                                                                                                                                                                          }
+                                                                                                                                                                                                                                          .section-heading {
+                                                                                                                                                                                                                                            display: flex;
+                                                                                                                                                                                                                                              align-items: flex-start;
+                                                                                                                                                                                                                                                justify-content: space-between;
+                                                                                                                                                                                                                                                  gap: 14px;
+                                                                                                                                                                                                                                                    margin-bottom: 16px;
+                                                                                                                                                                                                                                                    }
+
+                                                                                                                                                                                                                                                    .section-heading h2,
+                                                                                                                                                                                                                                                    .section-heading h3 {
+                                                                                                                                                                                                                                                      margin-bottom: 4px;
+                                                                                                                                                                                                                                                      }
+
+                                                                                                                                                                                                                                                      .form-grid {
+                                                                                                                                                                                                                                                        display: grid;
+                                                                                                                                                                                                                                                          grid-template-columns: repeat(2, minmax(0, 1fr));
+                                                                                                                                                                                                                                                            gap: 14px;
+                                                                                                                                                                                                                                                            }
+
+                                                                                                                                                                                                                                                            label {
+                                                                                                                                                                                                                                                              display: flex;
+                                                                                                                                                                                                                                                                flex-direction: column;
+                                                                                                                                                                                                                                                                  gap: 7px;
+                                                                                                                                                                                                                                                                    color: var(--text);
+                                                                                                                                                                                                                                                                      font-weight: 700;
+                                                                                                                                                                                                                                                                        font-size: 0.92rem;
+                                                                                                                                                                                                                                                                        }
+
+                                                                                                                                                                                                                                                                        input,
+                                                                                                                                                                                                                                                                        select,
+                                                                                                                                                                                                                                                                        textarea {
+                                                                                                                                                                                                                                                                          width: 100%;
+                                                                                                                                                                                                                                                                            border: 1px solid var(--border);
+                                                                                                                                                                                                                                                                              background: rgba(15, 23, 42, 0.9);
+                                                                                                                                                                                                                                                                                color: var(--text);
+                                                                                                                                                                                                                                                                                  border-radius: 14px;
+                                                                                                                                                                                                                                                                                    padding: 12px 13px;
+                                                                                                                                                                                                                                                                                      outline: none;
+                                                                                                                                                                                                                                                                                      }
+
+                                                                                                                                                                                                                                                                                      input:focus,
+                                                                                                                                                                                                                                                                                      select:focus,
+                                                                                                                                                                                                                                                                                      textarea:focus {
+                                                                                                                                                                                                                                                                                        border-color: rgba(56, 189, 248, 0.75);
+                                                                                                                                                                                                                                                                                          box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.16);
+                                                                                                                                                                                                                                                                                          }
+
+                                                                                                                                                                                                                                                                                          textarea {
+                                                                                                                                                                                                                                                                                            resize: vertical;
+                                                                                                                                                                                                                                                                                            }
+
+                                                                                                                                                                                                                                                                                            .full-width {
+                                                                                                                                                                                                                                                                                              grid-column: 1 / -1;
+                                                                                                                                                                                                                                                                                              }
+
+                                                                                                                                                                                                                                                                                              .form-actions {
+                                                                                                                                                                                                                                                                                                display: flex;
+                                                                                                                                                                                                                                                                                                  gap: 10px;
+                                                                                                                                                                                                                                                                                                    flex-wrap: wrap;
+                                                                                                                                                                                                                                                                                                    }
+
+                                                                                                                                                                                                                                                                                                    .secondary-button,
+                                                                                                                                                                                                                                                                                                    .danger-button,
+                                                                                                                                                                                                                                                                                                    .small-button {
+                                                                                                                                                                                                                                                                                                      border: 0;
+                                                                                                                                                                                                                                                                                                        padding: 11px 14px;
+                                                                                                                                                                                                                                                                                                          border-radius: 14px;
+                                                                                                                                                                                                                                                                                                            font-weight: 800;
+                                                                                                                                                                                                                                                                                                            }
+
+                                                                                                                                                                                                                                                                                                            .secondary-button {
+                                                                                                                                                                                                                                                                                                              background: rgba(255, 255, 255, 0.1);
+                                                                                                                                                                                                                                                                                                                color: var(--text);
+                                                                                                                                                                                                                                                                                                                  border: 1px solid var(--border);
+                                                                                                                                                                                                                                                                                                                  }
+
+                                                                                                                                                                                                                                                                                                                  .danger-button {
+                                                                                                                                                                                                                                                                                                                    background: rgba(239, 68, 68, 0.16);
+                                                                                                                                                                                                                                                                                                                      color: #fecaca;
+                                                                                                                                                                                                                                                                                                                        border: 1px solid rgba(239, 68, 68, 0.35);
+                                                                                                                                                                                                                                                                                                                        }
+
+                                                                                                                                                                                                                                                                                                                        .small-button {
+                                                                                                                                                                                                                                                                                                                          background: var(--accent-soft);
+                                                                                                                                                                                                                                                                                                                            color: #ffffff;
+                                                                                                                                                                                                                                                                                                                              border: 1px solid var(--accent-border);
+                                                                                                                                                                                                                                                                                                                                padding: 8px 10px;
+                                                                                                                                                                                                                                                                                                                                  font-size: 0.85rem;
+                                                                                                                                                                                                                                                                                                                                  }
+
+                                                                                                                                                                                                                                                                                                                                  .item-list {
+                                                                                                                                                                                                                                                                                                                                    display: grid;
+                                                                                                                                                                                                                                                                                                                                      gap: 12px;
+                                                                                                                                                                                                                                                                                                                                      }
+
+                                                                                                                                                                                                                                                                                                                                      .exercise-item {
+                                                                                                                                                                                                                                                                                                                                        border: 1px solid var(--border);
+                                                                                                                                                                                                                                                                                                                                          background: rgba(15, 23, 42, 0.72);
+                                                                                                                                                                                                                                                                                                                                            border-radius: 18px;
+                                                                                                                                                                                                                                                                                                                                              padding: 14px;
+                                                                                                                                                                                                                                                                                                                                              }
+
+                                                                                                                                                                                                                                                                                                                                              .exercise-item-header {
+                                                                                                                                                                                                                                                                                                                                                display: flex;
+                                                                                                                                                                                                                                                                                                                                                  align-items: flex-start;
+                                                                                                                                                                                                                                                                                                                                                    justify-content: space-between;
+                                                                                                                                                                                                                                                                                                                                                      gap: 12px;
+                                                                                                                                                                                                                                                                                                                                                        margin-bottom: 10px;
+                                                                                                                                                                                                                                                                                                                                                        }
+
+                                                                                                                                                                                                                                                                                                                                                        .exercise-item h4 {
+                                                                                                                                                                                                                                                                                                                                                          margin: 0 0 4px;
+                                                                                                                                                                                                                                                                                                                                                            font-size: 1.05rem;
+                                                                                                                                                                                                                                                                                                                                                            }
+
+                                                                                                                                                                                                                                                                                                                                                            .exercise-meta {
+                                                                                                                                                                                                                                                                                                                                                              color: var(--muted);
+                                                                                                                                                                                                                                                                                                                                                                font-size: 0.9rem;
+                                                                                                                                                                                                                                                                                                                                                                }
+
+                                                                                                                                                                                                                                                                                                                                                                .exercise-stats {
+                                                                                                                                                                                                                                                                                                                                                                  display: flex;
+                                                                                                                                                                                                                                                                                                                                                                    flex-wrap: wrap;
+                                                                                                                                                                                                                                                                                                                                                                      gap: 8px;
+                                                                                                                                                                                                                                                                                                                                                                        margin: 10px 0;
+                                                                                                                                                                                                                                                                                                                                                                        }
+
+                                                                                                                                                                                                                                                                                                                                                                        .stat-chip {
+                                                                                                                                                                                                                                                                                                                                                                          background: rgba(255, 255, 255, 0.08);
+                                                                                                                                                                                                                                                                                                                                                                            border: 1px solid var(--border);
+                                                                                                                                                                                                                                                                                                                                                                              border-radius: 999px;
+                                                                                                                                                                                                                                                                                                                                                                                color: var(--text);
+                                                                                                                                                                                                                                                                                                                                                                                  padding: 6px 9px;
+                                                                                                                                                                                                                                                                                                                                                                                    font-size: 0.82rem;
+                                                                                                                                                                                                                                                                                                                                                                                    }
+
+                                                                                                                                                                                                                                                                                                                                                                                    .exercise-notes {
+                                                                                                                                                                                                                                                                                                                                                                                      color: var(--muted);
+                                                                                                                                                                                                                                                                                                                                                                                        font-size: 0.92rem;
+                                                                                                                                                                                                                                                                                                                                                                                          margin-top: 10px;
+                                                                                                                                                                                                                                                                                                                                                                                            line-height: 1.45;
+                                                                                                                                                                                                                                                                                                                                                                                            }
+
+                                                                                                                                                                                                                                                                                                                                                                                            .exercise-actions {
+                                                                                                                                                                                                                                                                                                                                                                                              display: flex;
+                                                                                                                                                                                                                                                                                                                                                                                                gap: 8px;
+                                                                                                                                                                                                                                                                                                                                                                                                  flex-wrap: wrap;
+                                                                                                                                                                                                                                                                                                                                                                                                    margin-top: 12px;
+                                                                                                                                                                                                                                                                                                                                                                                                    }
+
+                                                                                                                                                                                                                                                                                                                                                                                                    .empty-state {
+                                                                                                                                                                                                                                                                                                                                                                                                      border: 1px dashed var(--border);
+                                                                                                                                                                                                                                                                                                                                                                                                        border-radius: 18px;
+                                                                                                                                                                                                                                                                                                                                                                                                          padding: 18px;
+                                                                                                                                                                                                                                                                                                                                                                                                            color: var(--muted);
+                                                                                                                                                                                                                                                                                                                                                                                                              text-align: center;
+                                                                                                                                                                                                                                                                                                                                                                                                              }
+
+                                                                                                                                                                                                                                                                                                                                                                                                              #cancelEditExerciseButton {
+                                                                                                                                                                                                                                                                                                                                                                                                                display: none;
+                                                                                                                                                                                                                                                                                                                                                                                                                }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                #cancelEditExerciseButton.visible {
+                                                                                                                                                                                                                                                                                                                                                                                                                  display: inline-flex;
+                                                                                                                                                                                                                                                                                                                                                                                                                  }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                  @media (max-width: 700px) {
+                                                                                                                                                                                                                                                                                                                                                                                                                    .form-grid {
+                                                                                                                                                                                                                                                                                                                                                                                                                        grid-template-columns: 1fr;
+                                                                                                                                                                                                                                                                                                                                                                                                                          }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                            .exercise-item-header {
+                                                                                                                                                                                                                                                                                                                                                                                                                                flex-direction: column;
+                                                                                                                                                                                                                                                                                                                                                                                                                                  }
+                                                                                                                                                                                                                                                                                                                                                                                                                                  }
+                                                                                                                                                                                                                                                                                                                                                                                                                                  .routine-exercise-builder {
+                                                                                                                                                                                                                                                                                                                                                                                                                                    border: 1px solid var(--border);
+                                                                                                                                                                                                                                                                                                                                                                                                                                      background: rgba(15, 23, 42, 0.55);
+                                                                                                                                                                                                                                                                                                                                                                                                                                        border-radius: 18px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                          padding: 14px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                          }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                          .routine-exercise-builder h3 {
+                                                                                                                                                                                                                                                                                                                                                                                                                                            margin-top: 0;
+                                                                                                                                                                                                                                                                                                                                                                                                                                            }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                            .compact-form {
+                                                                                                                                                                                                                                                                                                                                                                                                                                              margin-bottom: 14px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                              }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                              .routine-draft-list {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                display: grid;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                  gap: 10px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                    margin-top: 12px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                    }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                    .routine-draft-item {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                      display: flex;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                        align-items: flex-start;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                          justify-content: space-between;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                            gap: 12px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                              border: 1px solid var(--border);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                background: rgba(255, 255, 255, 0.06);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                  border-radius: 16px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                    padding: 12px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                    }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                    .routine-draft-item strong {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                      display: block;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                        margin-bottom: 4px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                        }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                        .routine-exercise-detail {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                          color: var(--muted);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                            font-size: 0.9rem;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                            }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                            .routine-item {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                              border: 1px solid var(--border);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                background: rgba(15, 23, 42, 0.72);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  border-radius: 18px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    padding: 14px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    .routine-item-header {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      display: flex;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        align-items: flex-start;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          justify-content: space-between;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            gap: 12px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              margin-bottom: 10px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              .routine-item h4 {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                margin: 0 0 4px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  font-size: 1.1rem;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  .routine-focus {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    color: var(--muted);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      font-size: 0.92rem;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      .routine-exercise-list {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        display: grid;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          gap: 8px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            margin-top: 12px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            .routine-exercise-row {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              border: 1px solid var(--border);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                background: rgba(255, 255, 255, 0.05);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  border-radius: 14px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    padding: 10px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    .routine-notes {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      color: var(--muted);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        font-size: 0.92rem;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          margin-top: 12px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            line-height: 1.45;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            .routine-actions {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              display: flex;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                gap: 8px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  flex-wrap: wrap;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    margin-top: 12px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    #cancelEditRoutineButton {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      display: none;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      #cancelEditRoutineButton.visible {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        display: inline-flex;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        @media (max-width: 700px) {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          .routine-draft-item,
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            .routine-item-header {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                flex-direction: column;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  .workout-list {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    display: grid;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      gap: 16px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      .workout-exercise-card {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        border: 1px solid var(--border);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          background: rgba(15, 23, 42, 0.72);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            border-radius: 18px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              padding: 14px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              .workout-exercise-card h4 {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                margin: 0 0 4px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  font-size: 1.1rem;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  .workout-set-list {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    display: grid;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      gap: 10px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        margin-top: 12px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        .workout-set-row {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          display: grid;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            grid-template-columns: auto 1fr 1fr;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              gap: 10px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                align-items: end;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  border: 1px solid var(--border);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    background: rgba(255, 255, 255, 0.05);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      border-radius: 14px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        padding: 10px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        .workout-set-check {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          display: flex;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            align-items: center;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              justify-content: center;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                padding-bottom: 12px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                .workout-set-check input {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  width: 22px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    height: 22px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      accent-color: var(--accent);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      .workout-save-actions {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        margin-top: 16px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        #saveWorkoutButton {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          display: none;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          #saveWorkoutButton.visible {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            display: inline-flex;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            .summary-strip {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              border: 1px solid var(--accent-border);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                background: var(--accent-soft);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  color: #ffffff;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    border-radius: 16px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      padding: 12px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        margin-bottom: 14px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        .history-item {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          border: 1px solid var(--border);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            background: rgba(15, 23, 42, 0.72);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              border-radius: 18px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                padding: 14px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                .history-item h4 {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  margin: 0 0 4px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    font-size: 1.1rem;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    .history-date {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      color: var(--muted);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        font-size: 0.92rem;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        .history-exercise-list {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          display: grid;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            gap: 8px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              margin-top: 12px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              .history-exercise-row {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                border: 1px solid var(--border);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  background: rgba(255, 255, 255, 0.05);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    border-radius: 14px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      padding: 10px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      .completed-set {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        color: var(--muted);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          font-size: 0.9rem;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            margin-top: 3px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            @media (max-width: 700px) {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              .workout-set-row {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  grid-template-columns: 1fr;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      .workout-set-check {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          justify-content: flex-start;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              padding-bottom: 0;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                .pb-celebration {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  display: flex;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    gap: 14px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      align-items: center;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        border: 1px solid rgba(245, 158, 11, 0.35);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          background:
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              radial-gradient(circle at top left, rgba(245, 158, 11, 0.24), transparent 40%),
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  rgba(15, 23, 42, 0.72);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    border-radius: 20px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      padding: 16px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        margin-bottom: 14px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        .pb-celebration-icon {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          width: 52px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            height: 52px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              display: grid;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                place-items: center;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  border-radius: 18px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    background: rgba(245, 158, 11, 0.18);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      font-size: 1.8rem;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      .pb-celebration h3 {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        margin: 0 0 4px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        .pb-celebration p {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          margin: 0;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            color: var(--muted);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            .pb-item {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              border: 1px solid var(--border);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                background: rgba(15, 23, 42, 0.72);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  border-radius: 18px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    padding: 14px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    .pb-item-header {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      display: flex;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        align-items: flex-start;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          justify-content: space-between;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            gap: 12px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              margin-bottom: 10px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              .pb-item h4 {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                margin: 0 0 4px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  font-size: 1.1rem;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  .pb-type {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    color: var(--muted);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      font-size: 0.92rem;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      .pb-value {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        font-size: 1.35rem;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          font-weight: 900;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            color: var(--accent);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            .pb-date {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              color: var(--muted);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                font-size: 0.9rem;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  margin-top: 6px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  .pb-badge {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    background: rgba(245, 158, 11, 0.16);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      color: #fde68a;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        border: 1px solid rgba(245, 158, 11, 0.35);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          border-radius: 999px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            padding: 6px 9px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              font-size: 0.82rem;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                font-weight: 800;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  white-space: nowrap;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  @media (max-width: 700px) {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    .pb-item-header {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        flex-direction: column;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          .dashboard-actions {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            display: flex;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              gap: 10px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                flex-wrap: wrap;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  margin-top: 16px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  .dashboard-grid {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    display: grid;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      grid-template-columns: repeat(2, minmax(0, 1fr));
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        gap: 14px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        .dashboard-highlight-card {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          min-height: 140px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          .dashboard-highlight-card h3 {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            margin-bottom: 8px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            .dashboard-highlight-card p {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              font-size: 1rem;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              .stats-grid {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                display: grid;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  grid-template-columns: repeat(4, minmax(0, 1fr));
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    gap: 12px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      margin-top: 14px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      .stat-card {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        border: 1px solid var(--border);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          background: rgba(15, 23, 42, 0.72);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            border-radius: 18px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              padding: 16px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                box-shadow: var(--shadow);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  display: flex;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    flex-direction: column;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      gap: 4px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      .stat-number {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        font-size: clamp(1.7rem, 7vw, 2.4rem);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          line-height: 1;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            font-weight: 900;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              color: var(--accent);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              .stat-label {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                color: var(--muted);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  font-weight: 700;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    font-size: 0.9rem;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    @media (max-width: 800px) {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      .dashboard-grid,
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        .stats-grid {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            grid-template-columns: repeat(2, minmax(0, 1fr));
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              @media (max-width: 480px) {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                .dashboard-grid,
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  .stats-grid {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      grid-template-columns: 1fr;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          .dashboard-actions {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              flex-direction: column;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  .dashboard-actions button {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      width: 100%;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          justify-content: center;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            body.theme-blue {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              --bg-start: #0284c7;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                --bg-end: #0ea5e9;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  --bg-glow-one: rgba(186, 230, 253, 0.42);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    --bg-glow-two: rgba(7, 89, 133, 0.35);
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      --accent: #38bdf8;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        --accent-strong: #0284c7;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          --accent-soft: rgba(56, 189, 248, 0.18);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            --accent-border: rgba(56, 189, 248, 0.44);
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              --button-text: #082f49;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              body.theme-pink {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                --bg-start: #db2777;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  --bg-end: #f472b6;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    --bg-glow-one: rgba(252, 231, 243, 0.46);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      --bg-glow-two: rgba(131, 24, 67, 0.38);
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        --accent: #f9a8d4;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          --accent-strong: #db2777;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            --accent-soft: rgba(249, 168, 212, 0.18);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              --accent-border: rgba(249, 168, 212, 0.46);
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                --button-text: #500724;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                .settings-profile-card {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  border: 1px solid var(--border);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    background: rgba(15, 23, 42, 0.72);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      border-radius: 18px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        padding: 16px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        .settings-profile-card h3 {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          margin-top: 0;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          .settings-profile-card p {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            color: var(--muted);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            .feature-roadmap-grid {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              display: grid;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                grid-template-columns: repeat(2, minmax(0, 1fr));
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  gap: 14px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  .feature-roadmap-card {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    border: 1px solid var(--border);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      background: rgba(15, 23, 42, 0.72);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        border-radius: 18px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          padding: 16px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          .feature-roadmap-card h3 {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            margin-top: 0;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              margin-bottom: 6px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              .feature-roadmap-card p {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                margin-bottom: 0;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  color: var(--muted);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    line-height: 1.45;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    .data-preview-list {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      display: grid;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        gap: 10px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        .data-preview-item {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          border: 1px solid var(--border);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            background: rgba(15, 23, 42, 0.58);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              border-radius: 16px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                padding: 12px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                .data-preview-item strong {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  display: block;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    margin-bottom: 4px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    .data-preview-item span {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      color: var(--muted);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        font-size: 0.92rem;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        @media (max-width: 700px) {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          .feature-roadmap-grid {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              grid-template-columns: 1fr;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                .active-workout-notice {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  border: 1px solid var(--accent-border);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    background: var(--accent-soft);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      color: #ffffff;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        border-radius: 16px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          padding: 12px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            margin-bottom: 14px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              line-height: 1.45;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              .active-workout-notice strong {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                display: block;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  margin-bottom: 4px;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  .hidden {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    display: none !important;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    }
+}
+.history-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.share-button {
+  border: 0;
+  padding: 11px 14px;
+  border-radius: 14px;
+  font-weight: 800;
+  background: var(--accent);
+  color: var(--button-text);
+  box-shadow: 0 10px 25px var(--accent-soft);
+}
+
+.copy-button {
+  border: 1px solid var(--border);
+  padding: 11px 14px;
+  border-radius: 14px;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+}
+
+@media (max-width: 480px) {
+  .history-actions {
+    flex-direction: column;
+  }
+
+  .history-actions button {
+    width: 100%;
+  }
+}
+#moodboard .feature-roadmap-card {
+  min-height: 150px;
+}
+
+#moodboard .data-preview-item strong::before {
+  content: "✦ ";
+  color: var(--accent);
+}
+#statsSummary {
+  display: grid;
+  gap: 10px;
+}
+
+#statsSummary .data-preview-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
-
-document.getElementById("workoutCelebrationClose")
-  ?.addEventListener("click", closeWorkoutCelebration);
-
-function saveCompletedWorkout() {
-      if (!activeWorkout) {
-        alert("There is no active workout to save.");
-        return;
-  }
-
-  const completedSets = activeWorkout.exercises.reduce((total, exercise) => {
-    return total + exercise.sets.filter((set) => set.completed).length;
-  }, 0);
-
-  if (completedSets === 0) {
-    const confirmed = confirm("No sets are ticked as complete. Save anyway?");
-
-    if (!confirmed) {
-      return;
-    }
-  }
-
-  const completedWorkout = {
-    ...activeWorkout,
-    completedAt: new Date().toISOString()
-  };
-
-    let newPersonalBests;
-
-  try {
-    newPersonalBests = checkForPersonalBests(completedWorkout);
-  } catch (error) {
-    alert("PB CHECK ERROR: " + error.message);
-    throw error;
-  }
-
-  gymPilotData.completedWorkouts.unshift(completedWorkout);
-
-  if (newPersonalBests.length > 0) {
-    gymPilotData.personalBests.unshift(...newPersonalBests);
-  }
-
-    activeWorkout = null;
-  clearSavedActiveWorkout();
-
-  saveData();
-  showWorkoutCelebration(completedWorkout, newPersonalBests);
-      renderDashboard();
-    renderWorkoutMode();
-renderHistory();
-renderPersonalBests();
-renderSettings();
-
-  }
-
 /* ---------------------------
    Workout Planner
 ---------------------------- */
 
-function savePlannedWorkouts() {
-  localStorage.setItem(
-    "gympilot-planned-workouts-v1",
-    JSON.stringify(plannedWorkouts)
-  );
+.planner-card {
+  overflow: hidden;
 }
 
-function formatPlannerDate(dateString) {
-  const date = new Date(`${dateString}T12:00:00`);
-
-  return date.toLocaleDateString("default", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric"
-  });
+.planner-heading {
+  align-items: center;
+  gap: 16px;
 }
 
-function getPlannerDateString(year, month, day) {
-  const date = new Date(year, month, day);
-
-  return [
-    date.getFullYear(),
-    String(date.getMonth() + 1).padStart(2, "0"),
-    String(date.getDate()).padStart(2, "0")
-  ].join("-");
+.planner-month-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-function renderPlanner() {
-  const calendar = document.getElementById("plannerCalendarGrid");
-  const monthLabel = document.getElementById("plannerMonthLabel");
-
-  if (!calendar || !monthLabel) {
-    return;
-  }
-
-  const year = plannerCurrentMonth.getFullYear();
-  const month = plannerCurrentMonth.getMonth();
-
-  monthLabel.textContent = plannerCurrentMonth.toLocaleDateString(
-    "default",
-    {
-      month: "long",
-      year: "numeric"
-    }
-  );
-
-  calendar.innerHTML = "";
-
-  const firstDay = new Date(year, month, 1);
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-  const startingDay = (firstDay.getDay() + 6) % 7;
-
-  // Empty cells before the first day of the month
-  for (let i = 0; i < startingDay; i++) {
-    const emptyCell = document.createElement("div");
-    emptyCell.className = "planner-day planner-day-empty";
-    calendar.appendChild(emptyCell);
-  }
-
-  for (let day = 1; day <= daysInMonth; day++) {
-    const dateString = getPlannerDateString(year, month, day);
-
-    const cell = document.createElement("button");
-    cell.type = "button";
-    cell.className = "planner-day";
-    cell.dataset.date = dateString;
-
-    const todayString = getPlannerDateString(
-      new Date().getFullYear(),
-      new Date().getMonth(),
-      new Date().getDate()
-    );
-
-    if (dateString === todayString) {
-      cell.classList.add("planner-today");
-    }
-
-    const dayNumber = document.createElement("span");
-    dayNumber.className = "planner-day-number";
-    dayNumber.textContent = day;
-
-    cell.appendChild(dayNumber);
-
-    const workoutsForDay = plannedWorkouts.filter(
-      workout => workout.date === dateString
-    );
-
-    workoutsForDay.forEach(workout => {
-      const routine = (gymPilotData.routines || []).find(
-        routineItem => routineItem.id === workout.routineId
-      );
-
-      if (!routine) {
-        return;
-      }
-
-      const routineBadge = document.createElement("span");
-      routineBadge.className = "planner-routine-badge";
-      routineBadge.textContent = routine.name;
-
-      cell.appendChild(routineBadge);
-    });
-
-    cell.addEventListener("click", () => {
-      openPlannerModal(dateString);
-    });
-
-    calendar.appendChild(cell);
-  }
+.planner-month-controls strong {
+  min-width: 150px;
+  text-align: center;
+  font-size: 1rem;
 }
 
-function populatePlannerRoutineSelect() {
-  const select = document.getElementById("plannerRoutineSelect");
-
-  if (!select) {
-    return;
-  }
-
-  const routines = gymPilotData.routines || [];
-
-  select.innerHTML = `
-    <option value="">Choose a routine</option>
-    ${routines.map(routine => `
-      <option value="${routine.id}">
-        ${escapeHTML(routine.name)}
-      </option>
-    `).join("")}
-  `;
-
-  if (routines.length === 0) {
-    select.innerHTML = `
-      <option value="">Create a routine first</option>
-    `;
-
-    select.disabled = true;
-  } else {
-    select.disabled = false;
-  }
+.planner-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  margin-bottom: 8px;
 }
 
-function openPlannerModal(dateString) {
-  const modal = document.getElementById("plannerModal");
-  const selectedDate = document.getElementById("plannerSelectedDate");
-  const select = document.getElementById("plannerRoutineSelect");
-
-  if (!modal || !selectedDate || !select) {
-    return;
-  }
-
-  plannerSelectedDate = dateString;
-
-  selectedDate.textContent = formatPlannerDate(dateString);
-
-  populatePlannerRoutineSelect();
-
-  const existingWorkout = plannedWorkouts.find(
-    workout => workout.date === dateString
-  );
-
-  select.value = existingWorkout ? existingWorkout.routineId : "";
-
-  const removeButton = document.getElementById("plannerRemoveButton");
-
-  if (removeButton) {
-    removeButton.classList.toggle("hidden", !existingWorkout);
-  }
-
-
-  modal.classList.remove("hidden");
+.planner-weekdays div {
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 800;
+  opacity: 0.7;
+  padding: 8px 4px;
 }
 
-function closePlannerModal() {
-  const modal = document.getElementById("plannerModal");
-
-  if (!modal) {
-    return;
-  }
-
-  modal.classList.add("hidden");
-
-  plannerSelectedDate = null;
+.planner-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
 }
 
-function savePlannerWorkout() {
-  const select = document.getElementById("plannerRoutineSelect");
-
-  if (!plannerSelectedDate || !select) {
-    return;
-  }
-
-  const routineId = select.value;
-
-  if (!routineId) {
-    return;
-  }
-
-  const existingIndex = plannedWorkouts.findIndex(
-    workout => workout.date === plannerSelectedDate
-  );
-
-  const plannedWorkout = {
-    id: crypto.randomUUID(),
-    date: plannerSelectedDate,
-    routineId,
-    profile: getActiveProfile()
-  };
-
-  if (existingIndex !== -1) {
-    plannedWorkouts[existingIndex] = plannedWorkout;
-  } else {
-    plannedWorkouts.push(plannedWorkout);
-  }
-
-  savePlannedWorkouts();
-
-  renderPlanner();
-
-  closePlannerModal();
-
-  updateSaveStatus("Saved");
+.planner-day {
+  min-height: 105px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
 }
 
-function removePlannerWorkout() {
-  if (!plannerSelectedDate) {
-    return;
-  }
-
-  const confirmed = confirm(
-    "Remove the planned workout for " +
-    formatPlannerDate(plannerSelectedDate) +
-    "?\n\nYour saved routine will not be deleted."
-  );
-
-  if (!confirmed) {
-    return;
-  }
-
-  plannedWorkouts = plannedWorkouts.filter(
-    workout => workout.date !== plannerSelectedDate
-  );
-
-  savePlannedWorkouts();
-  renderPlanner();
-  closePlannerModal();
-  updateSaveStatus("Saved");
+.planner-day:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
 }
 
-
-function setupPlanner() {
-    const plannerTab = document.getElementById("showPlannerTab");
-const historyTab = document.getElementById("showHistoryTab");
-const plannerPanel = document.getElementById("plannerPanel");
-const historyPanel = document.getElementById("historyPanel");
-  const previousButton = document.getElementById("plannerPreviousMonth");
-  const nextButton = document.getElementById("plannerNextMonth");
-  const saveButton = document.getElementById("plannerSaveButton");
-  const removeButton = document.getElementById("plannerRemoveButton");
-  const cancelButton = document.getElementById("plannerCancelButton");
-  const closeButton = document.getElementById("plannerModalClose");
-  const backdrop = document.getElementById("plannerModalBackdrop");
-
-  if (plannerTab && historyTab && plannerPanel && historyPanel) {
-  plannerTab.addEventListener("click", () => {
-    plannerPanel.classList.remove("hidden");
-    historyPanel.classList.add("hidden");
-
-    plannerTab.classList.add("active");
-    historyTab.classList.remove("active");
-
-    renderPlanner();
-  });
-
-  historyTab.addEventListener("click", () => {
-    plannerPanel.classList.add("hidden");
-    historyPanel.classList.remove("hidden");
-
-    plannerTab.classList.remove("active");
-    historyTab.classList.add("active");
-
-    renderHistory();
-  });
-}
-  if (previousButton) {
-    previousButton.addEventListener("click", () => {
-      plannerCurrentMonth.setMonth(
-        plannerCurrentMonth.getMonth() - 1
-      );
-
-      renderPlanner();
-    });
-  }
-
-  if (nextButton) {
-    nextButton.addEventListener("click", () => {
-      plannerCurrentMonth.setMonth(
-        plannerCurrentMonth.getMonth() + 1
-      );
-
-      renderPlanner();
-    });
-  }
-
-  if (saveButton) {
-    saveButton.addEventListener("click", () => {
-      savePlannerWorkout();
-    });
-  }
-
-  if (removeButton) {
-    removeButton.addEventListener("click", () => {
-      removePlannerWorkout();
-    });
-  }
-
-
-  if (cancelButton) {
-    cancelButton.addEventListener("click", () => {
-      closePlannerModal();
-    });
-  }
-
-  if (closeButton) {
-    closeButton.addEventListener("click", () => {
-      closePlannerModal();
-    });
-  }
-
-  if (backdrop) {
-    backdrop.addEventListener("click", () => {
-      closePlannerModal();
-    });
-  }
-
-  populatePlannerRoutineSelect();
-  renderPlanner();
+.planner-day-empty {
+  background: transparent;
+  border: 0;
+  cursor: default;
 }
 
-function renderHistory() {
-  const historySummary = document.getElementById("historySummary");
-  const historyList = document.getElementById("historyList");
+.planner-day-number {
+  font-weight: 900;
+  font-size: 1rem;
+}
 
-  if (!historySummary || !historyList) {
-    return;
+.planner-today {
+  border: 2px solid var(--accent);
+}
+
+.planner-routine-badge {
+  display: block;
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--button-text);
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.planner-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.planner-modal.hidden {
+  display: none;
+}
+
+.planner-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(3, 12, 24, 0.72);
+  backdrop-filter: blur(3px);
+}
+
+.planner-modal-card {
+  position: relative;
+  z-index: 1;
+  width: min(460px, 100%);
+  background: #102f49;
+  color: var(--text);
+  border: 1px solid rgba(72, 190, 245, 0.28);
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.02);
+}
+.planner-modal-card .section-heading {
+  margin-bottom: 18px;
+}
+
+.planner-modal-card .section-heading h3 {
+  margin-bottom: 6px;
+}
+
+.planner-modal-card .section-heading p {
+  margin: 0;
+  opacity: 0.75;
+}
+.planner-modal-close {
+  min-width: 44px;
+  min-height: 44px;
+  font-size: 1.4rem;
+}
+
+.planner-routine-picker {
+  margin: 20px 0;
+}
+
+.planner-routine-picker label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 800;
+}
+
+.planner-routine-picker select {
+  width: 100%;
+  min-height: 50px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(72, 190, 245, 0.3);
+  background: #0b2236;
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+}
+.planner-routine-picker select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(72, 190, 245, 0.12);
+}
+
+.planner-routine-picker select option {
+  background: #0b2236;
+  color: #ffffff;
+}
+
+@media (max-width: 700px) {
+  .planner-heading {
+    align-items: stretch;
   }
 
-  let workouts = [...(gymPilotData.completedWorkouts || [])]
-  .sort((a, b) => {
-    const dateA = parseSafeDate(a.date);
-    const dateB = parseSafeDate(b.date);
-
-    return (dateB?.getTime() || 0) - (dateA?.getTime() || 0);
-  });
-
-if (historyFilter && historyFilter.type === "range") {
-  workouts = workouts.filter(w => {
-    const d = parseSafeDate(w.date);
-    if (!d) return false;
-
-    if (historyFilter.start && d < historyFilter.start) return false;
-    if (historyFilter.end && d > historyFilter.end) return false;
-
-    return true;
-  });
-}
-
-  if (workouts.length === 0) {
-    historySummary.textContent = "No workouts logged yet.";
-    historyList.innerHTML = `
-      <div class="empty-state">
-        Complete your first workout and it will appear here.
-      </div>
-    `;
-    renderStats();
-    return;
+  .planner-month-controls {
+    justify-content: space-between;
   }
 
-  const totalSets = workouts.reduce((total, workout) => {
-    return total + workout.exercises.reduce((exerciseTotal, exercise) => {
-      return exerciseTotal + exercise.sets.filter((set) => set.completed).length;
-    }, 0);
-  }, 0);
+  .planner-month-controls strong {
+    min-width: 0;
+  }
 
-  historySummary.textContent = `${workouts.length} completed ${workouts.length === 1 ? "workout" : "workouts"} • ${totalSets} completed sets`;
+  .planner-weekdays {
+    gap: 4px;
+  }
 
-  historyList.innerHTML = workouts.map((workout) => {
-    const exerciseRows = workout.exercises.map((exercise) => {
-      const completedSetRows = exercise.sets
-        .filter((set) => set.completed)
-        .map((set) => {
-          const parts = [];
+  .planner-calendar-grid {
+    gap: 4px;
+  }
 
-          if (set.actualReps !== "") {
-            parts.push(`${escapeHTML(set.actualReps)} reps`);
-          }
+  .planner-day {
+    min-height: 82px;
+    padding: 6px;
+    border-radius: 10px;
+  }
 
-          if (set.actualWeight !== "" || set.actualUnit === "bodyweight") {
-  parts.push(`${escapeHTML(formatLoadWithUnit(set.actualWeight, set.actualUnit))}`);
+  .planner-routine-badge {
+    font-size: 0.65rem;
+    padding: 5px;
+  }
+}
+/* ---------------------------
+   Planner light calendar card
+---------------------------- */
+
+.planner-card {
+  background: #eef5f9;
+  color: #12324a;
+  border-color: #d4e2ea;
 }
 
-          return `<div class="completed-set">Set ${set.setNumber}: ${parts.length ? parts.join(" • ") : "Completed"}</div>`;
-        })
-        .join("");
-
-      return `
-        <div class="history-exercise-row">
-          <strong>${escapeHTML(exercise.name)}</strong>
-          ${completedSetRows || `<div class="completed-set">No completed sets ticked.</div>`}
-        </div>
-      `;
-    }).join("");
-
-    return `
-  <details class="history-item" ${workouts.indexOf(workout) === 0 ? "open" : ""}>
-
-    <summary class="history-item-header">
-
-      <div class="history-item-heading">
-        <h4>${escapeHTML(workout.routineName)}</h4>
-
-        <div class="history-date">
-          ${profileLabel(workout.profile)} • ${formatDate(workout.date)}
-        </div>
-
-        <div class="history-item-count">
-          ${workout.exercises.length} exercises •
-          ${workout.exercises.reduce((total, exercise) =>
-            total + exercise.sets.filter(set => set.completed).length, 0
-          )} completed sets
-        </div>
-      </div>
-
-      <span class="history-expand-icon">⌄</span>
-
-    </summary>
-
-    <div class="history-item-details">
-
-      <div class="history-exercise-list">
-        ${exerciseRows}
-      </div>
-
-      <div class="history-actions">
-        <button
-          class="copy-button"
-          type="button"
-          onclick="copyWorkoutSummary('${workout.id}')"
-        >
-          Copy summary
-        </button>
-
-        <button
-          class="share-button"
-          type="button"
-          onclick="shareWorkoutSummary('${workout.id}')"
-        >
-          Share
-        </button>
-      </div>
-
-    </div>
-
-  </details>
-`;
-   }).join("");
-
-  
-  renderStats();
-
+.planner-card .section-heading h3,
+.planner-card .section-heading p {
+  color: #12324a;
 }
-function renderHistoryFiltered(list) {
-  const container = document.getElementById("historyList");
 
-  if (!container) return;
+.planner-card .section-heading p {
+  opacity: 0.75;
+}
 
-  container.innerHTML = list.map(workout => `
-    <article class="card">
-      <h3>${workout.routineName}</h3>
-      <p>${formatDate(workout.date)}</p>
-    </article>
-  `).join("");
+.planner-month-controls strong {
+  color: #12324a;
+}
+
+.planner-weekdays div {
+  color: #536b7b;
+  opacity: 1;
+}
+
+.planner-day {
+  background: #ffffff;
+  color: #12324a;
+  border-color: #cbdbe5;
+}
+
+.planner-day:hover {
+  background: #f7fbfd;
+  border-color: var(--accent);
+}
+
+.planner-day-empty {
+  background: transparent;
+  border: 0;
+}
+
+.planner-today {
+  border: 2px solid var(--accent);
+  background: #f3fbff;
+}
+
+.planner-routine-badge {
+  background: var(--accent);
+  color: #07304a;
+}
+
+.planner-month-controls .secondary-button {
+  background: #ffffff;
+  color: #12324a;
+  border-color: #cbdbe5;
+}
+/* ---------------------------
+   Planner / History tabs
+---------------------------- */
+
+.planner-history-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 5px;
+  margin: 8px 0 24px;
+  background: #0d2d46;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+}
+
+.planner-history-tab {
+  min-width: 110px;
+  padding: 10px 18px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.72);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  transition: 0.18s ease;
+}
+
+.planner-history-tab:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.planner-history-tab.active {
+  background: var(--accent);
+  color: #07304a;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
+}
+/* Centre the Planner content */
+
+#plannerPanel {
+  width: 100%;
+}
+
+#plannerPanel .planner-card {
+  width: min(900px, 100%);
+  margin: 0 auto;
+}
+.planner-history-panel {
+  margin-top: 4px;
+}
+/* ---------------------------
+   History - Light GymPilot theme
+---------------------------- */
+
+#historyPanel {
+  width: 100%;
+}
+
+#historyPanel .history-card {
+  width: min(900px, 100%);
+  margin: 0 auto;
+  padding: 24px;
+  background: #eef5f9;
+  color: #12324a;
+  border: 1px solid #d4e2ea;
+  border-radius: 22px;
+}
+
+/* History headings */
+
+.history-card h3,
+.history-card h4 {
+  color: #12324a;
+}
+
+.history-card p {
+  color: #536b7b;
+}
+
+.history-heading {
+  margin-bottom: 24px;
+}
+
+/* Individual sections */
+
+.history-section {
+  margin-top: 22px;
+}
+
+.history-section + .history-section {
+  padding-top: 20px;
+  border-top: 1px solid #d4e2ea;
+}
+
+.history-section-title {
+  margin-bottom: 16px;
+}
+
+.history-section-title h4 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+}
+
+.history-section-title p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+/* Stats tiles */
+
+.history-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.history-stats .data-preview-item {
+  background: #ffffff;
+  border: 1px solid #cbdbe5;
+  border-radius: 14px;
+  padding: 16px;
+  color: #12324a;
+  cursor: pointer;
+}
+
+.history-stats .data-preview-item:hover {
+  border-color: #31b9f3;
+  background: #f7fbfd;
+}
+
+.history-stats .data-preview-item strong {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.history-stats .data-preview-item span {
+  display: block;
+  font-size: 1.6rem;
+  font-weight: 900;
+  color: #087caf;
+}
+
+/* Date controls */
+
+.history-date-controls {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.history-date-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  flex: 1 1 180px;
+  min-width: 0;
+  color: #12324a;
+  font-weight: 700;
+}
+
+.history-date-controls input[type="date"] {
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 12px;
+  background: #ffffff;
+  color: #12324a;
+  border: 1px solid #cbdbe5;
+  border-radius: 12px;
+  font: inherit;
+  color-scheme: light;
+}
+
+.history-date-controls input[type="date"]:focus {
+  outline: 2px solid #31b9f3;
+  outline-offset: 1px;
+}
+
+.history-filter-button {
+  height: 46px;
+  min-height: 46px;
+  align-self: flex-end;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+/* Clear History filter button */
+
+.history-date-controls .secondary-button {
+  background: #ffffff;
+  color: #12324a;
+  border: 1px solid #b6dcef;
+  border-radius: 12px;
+  padding: 10px 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.history-date-controls .secondary-button:hover {
+  background: #dceef8;
+}
+
+/* Completed workout summary */
+
+.history-card #historySummary {
+  background: #dceef8;
+  color: #12324a;
+  border: 1px solid #b6dcef;
+  border-radius: 12px;
+  padding: 14px;
+}
+
+/* Empty state */
+
+.history-card .empty-state {
+  background: #ffffff;
+  color: #536b7b;
+  border: 1px dashed #cbdbe5;
+  border-radius: 14px;
+  padding: 24px;
+  text-align: center;
+}
+
+/* Mobile */
+
+@media (max-width: 700px) {
+  #historyPanel .history-card {
+    padding: 16px;
+  }
+
+  .history-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .history-date-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .history-date-controls label,
+  .history-filter-button {
+    width: 100%;
+  }
+}
+/* ---------------------------
+   History - Completed Workout Cards
+---------------------------- */
+
+/* Main completed workout card */
+
+.history-card .history-item {
+  background: #ffffff;
+  color: #12324a;
+  border: 1px solid #cbdbe5;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 14px rgba(16, 47, 73, 0.06);
+}
+
+/* Routine name */
+
+.history-card .history-item h4 {
+  color: #12324a;
+  font-size: 1.15rem;
+  font-weight: 900;
+  margin: 0 0 6px;
+}
+
+/* Workout date and profile */
+
+.history-card .history-date {
+  color: #536b7b;
+  font-size: 0.85rem;
+  margin-bottom: 16px;
+}
+
+/* Exercise list */
+
+.history-card .history-exercise-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Individual exercise */
+
+.history-card .history-exercise-row {
+  background: #f3f8fb;
+  border: 1px solid #d4e2ea;
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: #12324a;
+}
+
+/* Exercise name */
+
+.history-card .history-exercise-row strong {
+  display: block;
+  color: #12324a;
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+
+/* Completed sets */
+
+.history-card .completed-set {
+  color: #536b7b;
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+/* Action buttons */
+
+.history-card .history-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.history-card .copy-button {
+  background: #e7f2f9;
+  color: #12324a;
+  border: 1px solid #cbdbe5;
+  border-radius: 10px;
+  padding: 10px 16px;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.history-card .copy-button:hover {
+  background: #d8ebf6;
+  border-color: #31b9f3;
+}
+
+.history-card .share-button {
+  background: #31b9f3;
+  color: #07304a;
+  border: 1px solid #31b9f3;
+  border-radius: 10px;
+  padding: 10px 16px;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.history-card .share-button:hover {
+  background: #16a8e6;
+}
+
+/* Mobile adjustments */
+
+@media (max-width: 700px) {
+  .history-card .history-item {
+    padding: 14px;
+  }
+
+  .history-card .history-exercise-row {
+    padding: 10px 12px;
+  }
+
+  .history-card .history-actions button {
+    flex: 1;
+  }
 }
 
 /* ---------------------------
-   Personal Bests
+   Expandable History Cards
 ---------------------------- */
 
-function checkForPersonalBests(workout) {
-  const newPersonalBests = [];
-
-  workout.exercises.forEach((exercise) => {
-    const completedSets = exercise.sets.filter((set) => set.completed);
-
-    if (completedSets.length === 0) {
-      return;
-    }
-
-    const maxWeight = Math.max(
-      ...completedSets
-        .map((set) => extractFirstNumber(set.actualWeight))
-        .filter((value) => value !== null)
-    );
-
-    const maxReps = Math.max(
-      ...completedSets
-        .map((set) => Number(set.actualReps))
-        .filter((value) => !Number.isNaN(value))
-    );
-
-    const completedSetCount = completedSets.length;
-
-    if (Number.isFinite(maxWeight)) {
-      const currentBestWeight = getCurrentBestValue(exercise.exerciseId, "maxWeight", workout.profile, getExerciseWorkoutUnit(exercise));
-
-      if (currentBestWeight === null || maxWeight > currentBestWeight) {
-        newPersonalBests.push(createPersonalBestRecord({
-          exercise,
-          workout,
-          type: "maxWeight",
-          label: "Heaviest weight / resistance",
-          value: maxWeight,
-          displayValue: formatLoadWithUnit(maxWeight, getExerciseWorkoutUnit(exercise))
-        }));
-      }
-    }
-
-    if (Number.isFinite(maxReps)) {
-      const currentBestReps = getCurrentBestValue(exercise.exerciseId, "maxReps", workout.profile, getExerciseWorkoutUnit(exercise));
-
-      if (currentBestReps === null || maxReps > currentBestReps) {
-        newPersonalBests.push(createPersonalBestRecord({
-          exercise,
-          workout,
-          type: "maxReps",
-          label: "Most reps in one set",
-          value: maxReps,
-          displayValue: `${maxReps} reps`
-        }));
-      }
-    }
-
-    const currentBestSets = getCurrentBestValue(exercise.exerciseId, "maxSets", workout.profile, getExerciseWorkoutUnit(exercise));
-
-    if (currentBestSets === null || completedSetCount > currentBestSets) {
-      newPersonalBests.push(createPersonalBestRecord({
-        exercise,
-        workout,
-        type: "maxSets",
-        label: "Most completed sets",
-        value: completedSetCount,
-        displayValue: `${completedSetCount} sets`
-      }));
-    }
-  });
-
-  return newPersonalBests;
+.history-card .history-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  cursor: pointer;
+  list-style: none;
 }
 
-function createPersonalBestRecord({ exercise, workout, type, label, value, displayValue }) {
-  return {
-    id: crypto.randomUUID(),
-    profile: profileLabel(workout.profile),
-unit: getExerciseWorkoutUnit(exercise),
-exerciseId: exercise.exerciseId,
-exerciseName: exercise.name,
-routineId: workout.routineId,
-    routineName: workout.routineName,
-    workoutId: workout.id,
-    date: workout.date,
-    type,
-    label,
-    value,
-    displayValue,
-    achievedAt: new Date().toISOString()
-  };
+.history-card .history-item-header::-webkit-details-marker {
+  display: none;
 }
 
-function getCurrentBestValue(exerciseId, type, profile, unit) {
-  const activeProfile = profileLabel(profile);
-  const activeUnit = unit || "kg";
-
-  const matchingBest = (gymPilotData.personalBests || [])
-    .filter((pb) => {
-      const pbProfile = profileLabel(pb.profile);
-      const pbUnit = pb.unit || "kg";
-
-      return (
-        pb.exerciseId === exerciseId &&
-        pb.type === type &&
-        pbProfile === activeProfile &&
-        pbUnit === activeUnit
-      );
-    })
-    .sort((a, b) => Number(b.value) - Number(a.value))[0];
-
-  if (!matchingBest) {
-    return null;
-  }
-
-  return Number(matchingBest.value);
+.history-card .history-item-heading {
+  min-width: 0;
 }
 
-function renderPersonalBests() {
-  const pbSummary = document.getElementById("pbSummary");
-  const latestPbCelebration = document.getElementById("latestPbCelebration");
-  const pbList = document.getElementById("pbList");
-
-  if (!pbSummary || !latestPbCelebration || !pbList) {
-    return;
-  }
-
-  const personalBests = gymPilotData.personalBests || [];
-
-  if (personalBests.length === 0) {
-    pbSummary.textContent = "No PBs yet.";
-    latestPbCelebration.innerHTML = `
-      <div class="pb-celebration-icon">🎉</div>
-      <div>
-        <h3>PBs will appear here</h3>
-        <p>Complete a workout and GymPilot will check for new records.</p>
-      </div>
-    `;
-
-    pbList.innerHTML = `
-      <div class="empty-state">
-        No personal bests logged yet.
-      </div>
-    `;
-    return;
-  }
-
-  const latestPb = personalBests[0];
-
-  pbSummary.textContent = `${personalBests.length} saved ${personalBests.length === 1 ? "PB" : "PBs"}`;
-
-  latestPbCelebration.innerHTML = `
-    <div class="pb-celebration-icon">🎉</div>
-    <div>
-      <h3>Latest PB: ${escapeHTML(latestPb.exerciseName)}</h3>
-      <p>${escapeHTML(profileLabel(latestPb.profile))} • ${escapeHTML(latestPb.label)} — ${escapeHTML(latestPb.displayValue)}</p>
-    </div>
-  `;
-
-  pbList.innerHTML = personalBests.map((pb) => {
-    return `
-      <article class="pb-item">
-        <div class="pb-item-header">
-          <div>
-            <h4>${escapeHTML(pb.exerciseName)}</h4>
-            <div class="pb-type">${escapeHTML(pb.label)}${pb.unit ? ` • ${escapeHTML(pb.unit)}` : ""}</div>
-          </div>
-
-          <span class="pb-badge">PB</span>
-        </div>
-
-        <div class="pb-value">${escapeHTML(pb.displayValue)}</div>
-        <div class="pb-date">
-  ${escapeHTML(profileLabel(pb.profile))} • ${formatDate(pb.date)} • ${escapeHTML(pb.routineName || "Workout")}
-</div>
-      </article>
-    `;
-  }).join("");
+.history-card .history-item-header h4 {
+  margin-bottom: 5px;
 }
 
-/* ---------------------------
-   Workout Sharing
----------------------------- */
-
-function getWorkoutById(workoutId) {
-  return (gymPilotData.completedWorkouts || []).find((workout) => workout.id === workoutId);
+.history-card .history-item-header .history-date {
+  margin-bottom: 5px;
 }
 
-function getWorkoutPersonalBests(workoutId) {
-  return (gymPilotData.personalBests || []).filter((pb) => pb.workoutId === workoutId);
+.history-card .history-item-count {
+  color: #536b7b;
+  font-size: 0.82rem;
 }
 
-function buildWorkoutSummary(workoutId) {
-  const workout = getWorkoutById(workoutId);
-
-  if (!workout) {
-    return "Workout not found.";
-  }
-
-  const lines = [];
-
-  lines.push("GymPilot Workout");
-  lines.push("");
-  lines.push(`${profileLabel(workout.profile)} completed ${workout.routineName}`);
-  lines.push(`Date: ${formatDate(workout.date)}`);
-  lines.push("");
-
-  workout.exercises.forEach((exercise) => {
-    lines.push(exercise.name);
-
-    const completedSets = exercise.sets.filter((set) => set.completed);
-
-    if (completedSets.length === 0) {
-      lines.push("No completed sets ticked.");
-      lines.push("");
-      return;
-    }
-
-    completedSets.forEach((set) => {
-      const setParts = [];
-
-      if (set.actualReps !== "") {
-        setParts.push(`${set.actualReps} reps`);
-      }
-
-      if (set.actualWeight !== "" || set.actualUnit === "bodyweight") {
-  setParts.push(formatLoadWithUnit(set.actualWeight, set.actualUnit));
+.history-card .history-expand-icon {
+  flex-shrink: 0;
+  color: #087caf;
+  font-size: 1.8rem;
+  font-weight: 800;
+  transition: transform 0.2s ease;
 }
 
-      lines.push(`Set ${set.setNumber}: ${setParts.length ? setParts.join(" • ") : "Completed"}`);
-    });
-
-    lines.push("");
-  });
-
-  const workoutPBs = getWorkoutPersonalBests(workoutId);
-
-  if (workoutPBs.length > 0) {
-    lines.push("PBs:");
-    workoutPBs.forEach((pb) => {
-      lines.push(`🎉 ${pb.exerciseName} — ${pb.label}: ${pb.displayValue}`);
-    });
-    lines.push("");
-  }
-
-  lines.push("Logged with GymPilot");
-
-  return lines.join("\n");
+.history-card .history-item[open] .history-expand-icon {
+  transform: rotate(180deg);
 }
 
-async function copyWorkoutSummary(workoutId) {
-  const summary = buildWorkoutSummary(workoutId);
-
-  try {
-    await navigator.clipboard.writeText(summary);
-    alert("Workout summary copied.");
-  } catch (error) {
-    console.error("Could not copy workout summary:", error);
-    alert(summary);
-  }
+.history-card .history-item-details {
+  padding-top: 16px;
+  margin-top: 16px;
+  border-top: 1px solid #d4e2ea;
 }
 
-async function shareWorkoutSummary(workoutId) {
-  const summary = buildWorkoutSummary(workoutId);
-  const workout = getWorkoutById(workoutId);
-
-  if (!workout) {
-    alert("Workout not found.");
-    return;
-  }
-
-  const shareData = {
-    title: `GymPilot workout — ${workout.routineName}`,
-    text: summary
-  };
-
-  if (navigator.share) {
-    try {
-      await navigator.share(shareData);
-      return;
-    } catch (error) {
-      console.error("Share cancelled or failed:", error);
-    }
-  }
-
-  await copyWorkoutSummary(workoutId);
-}
-function setHistoryFilter(type, value) {
-  const now = new Date();
-
-  if (type === "week") {
-    const start = new Date(now);
-    start.setDate(now.getDate() - 7);
-    historyFilter = { type: "range", start, end: now };
-  }
-
-  if (type === "month") {
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    historyFilter = { type: "range", start, end: now };
-  }
-
-  if (type === "year") {
-    const start = new Date(now.getFullYear(), 0, 1);
-    historyFilter = { type: "range", start, end: now };
-  }
-
-  if (type === "monthName") {
-    const parts = value.split(" ");
-    const monthName = parts[0];
-    const year = Number(parts[1]);
-
-    const monthIndex = [
-      "January", "February", "March", "April",
-      "May", "June", "July", "August",
-      "September", "October", "November", "December"
-    ].indexOf(monthName);
-
-    if (monthIndex === -1 || !Number.isInteger(year)) {
-      return;
-    }
-
-    const start = new Date(year, monthIndex, 1);
-    const end = new Date(year, monthIndex + 1, 1);
-end.setMilliseconds(-1);
-
-    historyFilter = {
-      type: "range",
-      start,
-      end
-    };
-  }
-
-  renderHistory();
-}
-function applyHistoryDateRange() {
-  const startValue = document.getElementById("statsStartDate").value;
-  const endValue = document.getElementById("statsEndDate").value;
-
-  if (!startValue && !endValue) {
-    historyFilter = null;
-    renderHistory();
-    return;
-  }
-
-  const start = startValue
-    ? new Date(`${startValue}T00:00:00`)
-    : null;
-
-  const end = endValue
-    ? new Date(`${endValue}T23:59:59.999`)
-    : null;
-
-  if (start && end && start > end) {
-    alert("The From date must be before the To date.");
-    return;
-  }
-
-  historyFilter = {
-    type: "range",
-    start,
-    end
-  };
-
-  renderHistory();
-}
-function clearHistoryFilter() {
-  historyFilter = null;
-
-  document.getElementById("statsStartDate").value = "";
-  document.getElementById("statsEndDate").value = "";
-
-  renderHistory();
+.history-card .history-item-header:focus-visible {
+  outline: 2px solid #31b9f3;
+  outline-offset: 5px;
+  border-radius: 6px;
 }
 /* ---------------------------
-   Shared helpers
+   Routine Action Buttons
 ---------------------------- */
 
-function sortExercises() {
-  gymPilotData.exercises.sort((a, b) => {
-    return a.name.localeCompare(b.name);
-  });
+.routine-actions .small-button,
+.routine-actions .danger-button {
+  min-height: 42px;
+  min-width: 90px;
+  padding: 10px 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  font-weight: 700;
+  border-radius: 10px;
+}
+/* =========================
+   SAVED ROUTINES SCROLL AREA
+========================= */
+
+#routineList {
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+/* =========================
+   WORKOUT CELEBRATION
+========================= */
+
+.workout-celebration-card {
+  position: relative;
+  overflow: hidden;
+  text-align: center;
+  max-width: 460px;
+  width: calc(100% - 24px);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 28px 20px;
 }
 
-function sortRoutines() {
-  gymPilotData.routines.sort((a, b) => {
-    return a.name.localeCompare(b.name);
-  });
+.workout-celebration-content {
+  position: relative;
+  z-index: 2;
 }
 
-function numberOrEmpty(value) {
-  if (value === "" || value === null || value === undefined) {
-    return "";
-  }
-
-  return Number(value);
+.workout-celebration-trophy {
+  font-size: 54px;
+  margin-bottom: 12px;
 }
 
-function getExerciseWorkoutUnit(exercise) {
-  const firstSetWithUnit = (exercise.sets || []).find((set) => set.actualUnit);
-
-  if (firstSetWithUnit) {
-    return firstSetWithUnit.actualUnit;
-  }
-
-  return exercise.plannedUnit || "kg";
-}
-function parseWorkoutDate(dateStr) {
-  return new Date(dateStr);
-}
-function getFilteredWorkouts(startDate, endDate) {
-  const workouts = gymPilotData.completedWorkouts || [];
-
-  return workouts.filter(w => {
-    const d = new Date(w.date);
-
-    if (startDate && d < startDate) return false;
-    if (endDate && d > endDate) return false;
-
-    return true;
-  });
-}
-function groupByMonth(workouts) {
-  const map = {};
-
-  workouts.forEach(w => {
-    const d = parseSafeDate(w.date);
-    if (!d) return;
-
-    const key = d.toLocaleString('default', {
-      month: 'long',
-      year: 'numeric'
-    });
-
-    map[key] = (map[key] || 0) + 1;
-  });
-
-  return map;
-}
-// --- Streak helper ---
-function calculateStreak(workouts, profile = null) {
-  if (!workouts || workouts.length === 0) return 0;
-
-  const filtered = profile
-    ? workouts.filter(w => w.profile === profile)
-    : workouts.slice();
-
-  const sorted = filtered
-    .map(w => parseSafeDate(w.date))
-    .filter(d => d)
-    .sort((a, b) => b - a);
-
-  if (sorted.length === 0) return 0;
-
-  let streak = 1;
-  let lastDate = sorted[0];
-
-  for (let i = 1; i < sorted.length; i++) {
-    const diff = Math.round((lastDate - sorted[i]) / (1000 * 60 * 60 * 24));
-
-    if (diff === 1) {
-      streak++;
-      lastDate = sorted[i];
-    } else if (diff > 1) {
-      break;
-    } else {
-      lastDate = sorted[i];
-    }
-  }
-
-  return streak;
+#workoutCelebrationTitle {
+  font-size: 26px;
+  margin-bottom: 10px;
 }
 
-// --- Monthly chart helper ---
-function renderMonthlyChart(workouts) {
-  const ctx = document.getElementById("monthlyChart").getContext("2d");
-
-  const monthlyCounts = {};
-  workouts.forEach(w => {
-    const d = parseSafeDate(w.date);
-    if (!d) return;
-    const key = d.toLocaleString("default", { month: "short", year: "numeric" });
-    monthlyCounts[key] = (monthlyCounts[key] || 0) + 1;
-  });
-
-  const labels = Object.keys(monthlyCounts).sort((a, b) => {
-    const ad = new Date(a);
-    const bd = new Date(b);
-    return ad - bd;
-  });
-
-  const data = labels.map(l => monthlyCounts[l]);
-
-  // Assign colors: highlight active month if any
-  const backgroundColors = labels.map(l => (activeChartFilter === l ? "var(--accent)" : "#ccc"));
-
-  // Destroy previous chart if exists
-  if (window._monthlyChartInstance) {
-    window._monthlyChartInstance.destroy();
-  }
-
-  window._monthlyChartInstance = new Chart(ctx, {
-    type: "bar",
-    data: {
-      labels,
-      datasets: [{
-        label: "Workouts",
-        data,
-        backgroundColor: backgroundColors,
-      }]
-    },
-    options: {
-      responsive: true,
-      onClick: (evt, elements) => {
-        if (!elements.length) return;
-        const index = elements[0].index;
-        const monthClicked = labels[index];
-
-        // Update active filter
-        activeChartFilter = monthClicked;
-
-        // Set history filter to this month and re-render
-        const workouts = gymPilotData.completedWorkouts || [];
-        const filtered = workouts.filter(w => {
-          const d = parseSafeDate(w.date);
-          if (!d) return false;
-          const name = d.toLocaleString("default", { month: "short", year: "numeric" });
-          return name === monthClicked;
-        });
-
-        // Store temporarily and re-render history & stats
-        gymPilotData._tempHistoryFilter = filtered;
-        renderHistory();
-        renderStats();
-      },
-      scales: {
-        y: { beginAtZero: true, precision: 0 }
-      }
-    }
-  });
-}
-function renderWeeklyChart(workouts) {
-  const ctx = document.getElementById("weeklyChart").getContext("2d");
-
-  const weeklyCounts = {};
-  workouts.forEach(w => {
-    const d = parseSafeDate(w.date);
-    if (!d) return;
-
-    // Calculate year + week number
-    const firstDayOfYear = new Date(d.getFullYear(),0,1);
-    const pastDaysOfYear = (d - firstDayOfYear)/(1000*60*60*24);
-    const weekNumber = Math.ceil((pastDaysOfYear + firstDayOfYear.getDay()+1)/7);
-    const key = `${d.getFullYear()}-W${weekNumber}`;
-    weeklyCounts[key] = (weeklyCounts[key] || 0) + 1;
-  });
-
-  const labels = Object.keys(weeklyCounts).sort((a,b) => {
-    const [yearA, wA] = a.split("-W");
-    const [yearB, wB] = b.split("-W");
-    return Number(yearA)*52+Number(wA) - Number(yearB)*52-Number(wB);
-  });
-
-  const data = labels.map(l => weeklyCounts[l]);
-  const backgroundColors = labels.map(l => (activeWeekFilter===l ? "var(--accent)" : "#ccc"));
-
-  if (window._weeklyChartInstance) {
-    window._weeklyChartInstance.destroy();
-  }
-
-  window._weeklyChartInstance = new Chart(ctx, {
-    type: "bar",
-    data: { labels, datasets:[{ label:"Workouts", data, backgroundColor: backgroundColors }] },
-    options: {
-      responsive:true,
-      onClick: (evt,elements) => {
-        if(!elements.length) return;
-        const index = elements[0].index;
-        const weekClicked = labels[index];
-        activeWeekFilter = weekClicked;
-
-        // Filter History
-        const filtered = (gymPilotData.completedWorkouts||[]).filter(w=>{
-          const d = parseSafeDate(w.date);
-          if(!d) return false;
-          const firstDayOfYear = new Date(d.getFullYear(),0,1);
-          const pastDays = (d - firstDayOfYear)/(1000*60*60*24);
-          const weekNum = Math.ceil((pastDays + firstDayOfYear.getDay()+1)/7);
-          const key = `${d.getFullYear()}-W${weekNum}`;
-          return key===weekClicked;
-        });
-
-        gymPilotData._tempHistoryFilter = filtered;
-        renderHistory();
-        renderStats();
-      },
-      scales:{ y:{ beginAtZero:true, precision:0 } }
-    }
-  });
-}
-function renderStats(useCustom = false) {
-  const workouts = gymPilotData.completedWorkouts || [];
-
-  const now = new Date();
-
-  const startOfWeek = new Date(now);
-  startOfWeek.setDate(now.getDate() - 7);
-
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-  const startOfYear = new Date(now.getFullYear(), 0, 1);
-
-  let filtered = workouts;
-
-  if (useCustom) {
-    const start = document.getElementById("statsStartDate").value;
-    const end = document.getElementById("statsEndDate").value;
-
-    if (start) {
-      filtered = filtered.filter(w => new Date(w.date) >= new Date(start));
-    }
-
-    if (end) {
-      filtered = filtered.filter(w => new Date(w.date) <= new Date(end));
-    }
-  }
-
-  const week = workouts.filter(w => {
-  const d = parseSafeDate(w.date);
-  return d && d >= startOfWeek;
-}).length;
-
-const month = workouts.filter(w => {
-  const d = parseSafeDate(w.date);
-  return d && d >= startOfMonth;
-}).length;
-
-const year = workouts.filter(w => {
-  const d = parseSafeDate(w.date);
-  return d && d >= startOfYear;
-}).length;
-
-  const monthly = groupByMonth(workouts);
- 
-  const container = document.getElementById("statsSummary");
-
-  if (!container) return;
-
-  container.innerHTML = `
-    <div class="data-preview-item" onclick="setHistoryFilter('week')">
-  <strong>This Week</strong>
-  <span>${week}</span>
-</div>
-
-    <div class="data-preview-item" onclick="setHistoryFilter('month')">
-  <strong>This Month</strong>
-  <span>${month}</span>
-</div>
-
-    <div class="data-preview-item" onclick="setHistoryFilter('year')">
-  <strong>This Year</strong>
-  <span>${year}</span>
-</div>
-
-    ${Object.entries(monthly).map(([k, v]) => `
-      <div class="data-preview-item" onclick="setHistoryFilter('monthName', '${k}')">
-  <strong>${k}</strong>
-  <span>${v}</span>
-</div>
-    `).join("")}
-  `;
-   // Display streak
-const currentStreak = calculateStreak(workouts);
-const streakEl = document.getElementById("streakDisplay");
-if (streakEl) streakEl.textContent = `Your current streak: ${currentStreak} day${currentStreak !== 1 ? 's' : ''}`;
-
-// Draw monthly chart
-renderMonthlyChart(workouts);
-renderWeeklyChart(workouts);
-}
-function parseSafeDate(dateStr) {
-  if (!dateStr) return null;
-
-  const iso = new Date(dateStr);
-  if (!isNaN(iso)) return iso;
-
-  const parts = dateStr.split("/");
-
-  if (parts.length === 3) {
-    const [dd, mm, yyyy] = parts;
-    return new Date(`${yyyy}-${mm}-${dd}`);
-  }
-
-  return null;
-}
-function formatLoadWithUnit(load, unit) {
-  if (!load && unit === "bodyweight") {
-    return "bodyweight";
-  }
-
-  if (!load) {
-    return "";
-  }
-
-  if (!unit) {
-    return load;
-  }
-
-  if (unit === "bodyweight") {
-    return "bodyweight";
-  }
-
-  return `${load} ${unit}`;
-}
-function extractFirstNumber(value) {
-  if (value === "" || value === null || value === undefined) {
-    return null;
-  }
-
-  const match = String(value).match(/\d+(\.\d+)?/);
-
-  if (!match) {
-    return null;
-  }
-
-  return Number(match[0]);
+#workoutCelebrationMessage {
+  margin-bottom: 24px;
+  line-height: 1.5;
 }
 
-function updateSaveStatus(message) {
-  const saveStatus = document.getElementById("saveStatus");
+.workout-celebration-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 22px;
+}
 
-  if (!saveStatus) {
-    return;
+.workout-celebration-stats > div {
+  padding: 14px 6px;
+  border-radius: 12px;
+  background: rgba(128, 128, 128, 0.1);
+}
+
+.workout-celebration-stats strong {
+  display: block;
+  font-size: 25px;
+  margin-bottom: 6px;
+}
+
+.workout-celebration-stats span {
+  display: block;
+  font-size: 12px;
+}
+
+.celebration-pb-section {
+  text-align: left;
+  padding: 16px;
+  margin-bottom: 20px;
+  border-radius: 12px;
+  background: rgba(255, 193, 7, 0.1);
+}
+
+.celebration-pb-section h3 {
+  margin-bottom: 12px;
+}
+
+.celebration-pb-item {
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.2);
+}
+
+.celebration-pb-item:last-child {
+  border-bottom: none;
+}
+
+.workout-celebration-close {
+  width: 100%;
+  min-height: 48px;
+}
+
+/* Confetti container */
+.workout-confetti {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Individual confetti pieces */
+.workout-confetti-piece {
+  position: absolute;
+  top: -20px;
+  width: 8px;
+  height: 14px;
+  opacity: 0;
+  animation: workout-confetti-fall 3s ease-in forwards;
+}
+
+@keyframes workout-confetti-fall {
+  0% {
+    transform: translateY(-20px) rotate(0deg);
+    opacity: 1;
   }
 
-  saveStatus.textContent = message;
-
-  if (message === "Saved") {
-    setTimeout(() => {
-      saveStatus.textContent = "Ready";
-    }, 1200);
+  100% {
+    transform: translateY(550px) rotate(720deg);
+    opacity: 0;
   }
 }
 
-function formatDate(dateString) {
-  if (!dateString) {
-    return "No date";
+@media (max-width: 480px) {
+  .workout-celebration-card {
+    padding: 22px 14px;
   }
 
-  const date = new Date(`${dateString}T00:00:00`);
+  #workoutCelebrationTitle {
+    font-size: 23px;
+  }
 
-  return date.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric"
-  });
+  .workout-celebration-stats strong {
+    font-size: 22px;
+  }
 }
 
-function escapeHTML(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+@media (prefers-reduced-motion: reduce) {
+  .workout-confetti-piece {
+    animation: none;
+    display: none;
+  }
 }
 
-/* ---------------------------
-   GymPilot Offline Support
----------------------------- */
+/* =========================================
+   GYMPILOT - BACKUP & RESTORE
+   ========================================= */
 
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js")
-      .then(() => {
-        console.log("GymPilot offline support registered.");
-      })
-      .catch((error) => {
-        console.error("GymPilot offline registration failed:", error);
-      });
-  });
+.backup-restore-card {
+  border: 1px solid var(--border-color, #dce5f0);
+  border-radius: 16px;
+  padding: 24px;
 }
 
-/* ---------------------------
-   GymPilot Offline Support
----------------------------- */
+.backup-restore-card .form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 20px;
+}
 
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js")
-      .then(() => {
-        console.log("GymPilot offline support registered.");
-      })
-      .catch((error) => {
-        console.error("GymPilot offline registration failed:", error);
-      });
-  });
+.backup-restore-card .backup-action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 12px 22px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s ease,
+              box-shadow 0.2s ease;
+}
+
+/* Export button */
+.backup-restore-card #exportBackupBtn {
+  background: var(--accent, #2563eb);
+  color: white;
+  border: 1px solid transparent;
+}
+
+/* Restore button */
+.backup-restore-card #restoreBackupBtn {
+  background: transparent;
+  color: var(--accent, #2563eb);
+  border: 2px solid currentColor;
+}
+
+/* Hover effects */
+@media (hover: hover) {
+  .backup-restore-card .backup-action-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 14px rgba(0, 0, 0, 0.12);
+  }
+}
+
+/* Mobile layout */
+@media (max-width: 600px) {
+  .backup-restore-card .form-actions {
+    flex-direction: column;
+  }
+
+  .backup-restore-card .backup-action-button {
+    width: 100%;
+  }
+}
+
+/* =====================================
+   GYMPILOT — LIVE WORKOUT REST TIMER
+   ===================================== */
+
+.workout-rest-timer {
+  margin: 18px 0 24px;
+  padding: 20px;
+  border: 1px solid var(--border, #d5d9e0);
+  border-radius: 16px;
+  background: var(--card-bg, rgba(128, 128, 128, 0.06));
+  text-align: center;
+}
+
+.workout-rest-timer.hidden {
+  display: none;
+}
+
+.workout-rest-timer .section-heading {
+  text-align: left;
+  margin-bottom: 14px;
+}
+
+.rest-timer-display {
+  font-size: clamp(48px, 10vw, 76px);
+  font-weight: 800;
+  letter-spacing: 2px;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  margin: 18px 0 22px;
+}
+
+.rest-timer-presets {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.rest-timer-presets button {
+  min-width: 58px;
+  padding: 10px 12px;
+}
+
+.rest-timer-presets button.active {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.18);
+  font-weight: 700;
+}
+
+.rest-timer-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.rest-timer-actions button {
+  flex: 1;
+  max-width: 180px;
+}
+
+.rest-timer-status {
+  margin: 14px 0 0;
+  font-size: 0.9rem;
+  opacity: 0.75;
+}
+
+.rest-timer-display.finished {
+  color: #16a34a;
+}
+
+@media (max-width: 480px) {
+  .workout-rest-timer {
+    padding: 16px 12px;
+  }
+
+  .rest-timer-presets button {
+    flex: 1;
+    min-width: 52px;
+  }
+}
+
+/* =====================================
+   GYMPILOT — FLOATING REST TIMER
+   ===================================== */
+
+.floating-rest-timer {
+  position: fixed;
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+
+  width: calc(100% - 32px);
+  max-width: 440px;
+  padding: 12px 16px;
+
+  background: #f3f7ff;
+  color: #172b4d;
+  border: 1px solid #b8cef5;
+  border-radius: 16px;
+
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+}
+
+.floating-rest-timer.hidden {
+  display: none;
+}
+
+.floating-rest-timer-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.floating-rest-timer-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  opacity: 0.7;
+}
+
+#floatingRestTimerDisplay {
+  font-size: 1.8rem;
+  font-weight: 800;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.floating-rest-timer-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.floating-rest-timer-controls button {
+  min-width: 70px;
+  padding: 10px 12px;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+#floatingRestTimerDisplay.finished {
+  color: #15803d;
+}
+
+/* Smaller phones */
+
+@media (max-width: 480px) {
+  .floating-rest-timer {
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    width: calc(100% - 20px);
+    padding: 10px 12px;
+    gap: 10px;
+  }
+
+  #floatingRestTimerDisplay {
+    font-size: 1.55rem;
+  }
+
+  .floating-rest-timer-controls button {
+    min-width: 58px;
+    padding: 9px 10px;
+    font-size: 0.8rem;
+  }
+}
+
+/* FLOATING TIMER — RESET BUTTON VISIBILITY */
+
+.floating-rest-timer #floatingRestTimerReset {
+  background: #ffffff;
+  color: #172b4d;
+  border: 1px solid #9bb8e8;
+}
+
+.floating-rest-timer #floatingRestTimerReset:hover {
+  background: #e3edff;
+}
+
+/* =====================================
+   GYMPILOT — LIGHTER REST TIMER
+   ===================================== */
+
+.workout-rest-timer {
+  background: #f3f7ff;
+  color: #172b4d;
+  border: 1px solid #bfd3f5;
+  box-shadow: 0 4px 16px rgba(30, 64, 120, 0.08);
+}
+
+.workout-rest-timer h3 {
+  color: #172b4d;
+}
+
+.workout-rest-timer .section-heading p {
+  color: #536987;
+}
+
+.workout-rest-timer .rest-timer-display {
+  color: #172b4d;
+}
+
+.workout-rest-timer .rest-timer-display.finished {
+  color: #15803d;
+}
+
+.workout-rest-timer .rest-timer-status {
+  color: #536987;
+  opacity: 1;
+}
+
+/* Make timer preset buttons easier to see */
+
+.workout-rest-timer .rest-timer-presets button {
+  background: #ffffff;
+  color: #172b4d;
+  border: 1px solid #b8cef5;
+}
+
+.workout-rest-timer .rest-timer-presets button.active {
+  background: #dceaff;
+  color: #173d75;
+  border-color: #60a5fa;
+}
+
+/* Improve Reset button contrast */
+
+.workout-rest-timer #restTimerReset {
+  background: #ffffff;
+  color: #172b4d;
+  border: 1px solid #9bb8e8;
+}
+
+/* =====================================
+   GYMPILOT — LIGHTER LIVE WORKOUT CARDS
+   ===================================== */
+
+/* Main exercise card */
+
+
+.workout-exercise-card {
+  background: #d5e7f8;
+  color: #123e68;
+  border: 1px solid #8fb9e1;
+  box-shadow: 0 4px 14px rgba(30, 64, 120, 0.10);
+}
+
+
+/* Exercise heading */
+
+.workout-exercise-card h4 {
+  color: #172b4d;
+}
+
+/* Planned sets, reps and load */
+
+.workout-exercise-card .routine-exercise-detail {
+  color: #536987;
+}
+
+/* Individual set rows */
+
+
+.workout-exercise-card .workout-set-row {
+  background: #eaf3fc;
+  color: #123e68;
+  border: 1px solid #a8c9e8;
+}
+
+
+/* Labels */
+
+.workout-exercise-card .workout-set-row label {
+  color: #344c70;
+}
+
+/* Reps and weight input fields */
+
+.workout-exercise-card .workout-set-row input[type="number"],
+.workout-exercise-card .workout-set-row input[type="text"] {
+  background: #f8fbff;
+  color: #172b4d;
+  border: 1px solid #b8cef5;
+  border-radius: 8px;
+}
+
+/* Clearer focus when entering workout data */
+
+.workout-exercise-card .workout-set-row input:focus {
+  border-color: #3b82f6;
+  outline: 2px solid rgba(59, 130, 246, 0.2);
+  outline-offset: 1px;
+}
+
+/* Better contrast for workout action buttons */
+
+.workout-exercise-card .secondary-button {
+  background: #ffffff;
+  color: #173d75;
+  border: 1px solid #9bb8e8;
+}
+
+.workout-exercise-card .secondary-button:hover {
+  background: #e3edff;
+}
+
+.workout-exercise-card .secondary-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* =====================================
+   GYMPILOT — COMPACT WORKOUT SET ROWS
+   ===================================== */
+
+.workout-exercise-card .workout-set-row {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+  border-radius: 10px;
+}
+
+/* Stack checkbox and set number in first column */
+
+.workout-exercise-card .workout-set-check {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0;
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+/* Compact labels above inputs */
+
+.workout-exercise-card .workout-set-row label {
+  min-width: 0;
+  font-size: 0.75rem;
+}
+
+/* Input boxes */
+
+.workout-exercise-card .workout-set-row input[type="number"],
+.workout-exercise-card .workout-set-row input[type="text"] {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  margin-top: 4px;
+  padding: 9px 8px;
+  font-size: 1rem;
+  min-height: 42px;
+}
+
+/* Checkbox */
+
+.workout-exercise-card .workout-set-check input[type="checkbox"] {
+  width: 24px;
+  height: 24px;
+  margin: 0;
+}
+
+/* Less space between sets */
+
+.workout-exercise-card .workout-set-list {
+  gap: 6px;
+  margin-top: 10px;
+}
+
+/* Tighter exercise cards */
+
+.workout-exercise-card {
+  padding: 12px;
+}
+
+/* Extra-small phones */
+
+@media (max-width: 380px) {
+  .workout-exercise-card .workout-set-row {
+    grid-template-columns: 44px minmax(0, 1fr) minmax(0, 1fr);
+    gap: 5px;
+    padding: 6px;
+  }
+
+  .workout-exercise-card .workout-set-row input[type="number"],
+  .workout-exercise-card .workout-set-row input[type="text"] {
+    padding: 8px 5px;
+    font-size: 0.95rem;
+  }
 }
