@@ -2021,3 +2021,131 @@
 .floating-rest-timer #floatingRestTimerReset:hover {
   background: #e3edff;
 }
+
+/* =====================================
+   GYMPILOT — LIGHTER REST TIMER
+   ===================================== */
+
+.workout-rest-timer {
+  background: #f3f7ff;
+  color: #172b4d;
+  border: 1px solid #bfd3f5;
+  box-shadow: 0 4px 16px rgba(30, 64, 120, 0.08);
+}
+
+.workout-rest-timer h3 {
+  color: #172b4d;
+}
+
+.workout-rest-timer .section-heading p {
+  color: #536987;
+}
+
+.workout-rest-timer .rest-timer-display {
+  color: #172b4d;
+}
+
+.workout-rest-timer .rest-timer-display.finished {
+  color: #15803d;
+}
+
+.workout-rest-timer .rest-timer-status {
+  color: #536987;
+  opacity: 1;
+}
+
+/* Make timer preset buttons easier to see */
+
+.workout-rest-timer .rest-timer-presets button {
+  background: #ffffff;
+  color: #172b4d;
+  border: 1px solid #b8cef5;
+}
+
+.workout-rest-timer .rest-timer-presets button.active {
+  background: #dceaff;
+  color: #173d75;
+  border-color: #60a5fa;
+}
+
+/* Improve Reset button contrast */
+
+.workout-rest-timer #restTimerReset {
+  background: #ffffff;
+  color: #172b4d;
+  border: 1px solid #9bb8e8;
+}
+
+/* =====================================
+   GYMPILOT — LIGHTER LIVE WORKOUT CARDS
+   ===================================== */
+
+/* Main exercise card */
+
+.workout-exercise-card {
+  background: #f3f7ff;
+  color: #172b4d;
+  border: 1px solid #bfd3f5;
+  box-shadow: 0 4px 14px rgba(30, 64, 120, 0.07);
+}
+
+/* Exercise heading */
+
+.workout-exercise-card h4 {
+  color: #172b4d;
+}
+
+/* Planned sets, reps and load */
+
+.workout-exercise-card .routine-exercise-detail {
+  color: #536987;
+}
+
+/* Individual set rows */
+
+.workout-exercise-card .workout-set-row {
+  background: #ffffff;
+  color: #172b4d;
+  border: 1px solid #d4e1f5;
+}
+
+/* Labels */
+
+.workout-exercise-card .workout-set-row label {
+  color: #344c70;
+}
+
+/* Reps and weight input fields */
+
+.workout-exercise-card .workout-set-row input[type="number"],
+.workout-exercise-card .workout-set-row input[type="text"] {
+  background: #f8fbff;
+  color: #172b4d;
+  border: 1px solid #b8cef5;
+  border-radius: 8px;
+}
+
+/* Clearer focus when entering workout data */
+
+.workout-exercise-card .workout-set-row input:focus {
+  border-color: #3b82f6;
+  outline: 2px solid rgba(59, 130, 246, 0.2);
+  outline-offset: 1px;
+}
+
+/* Better contrast for workout action buttons */
+
+.workout-exercise-card .secondary-button {
+  background: #ffffff;
+  color: #173d75;
+  border: 1px solid #9bb8e8;
+}
+
+.workout-exercise-card .secondary-button:hover {
+  background: #e3edff;
+}
+
+.workout-exercise-card .secondary-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
