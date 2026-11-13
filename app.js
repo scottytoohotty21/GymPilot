@@ -1404,6 +1404,47 @@ function renderWorkoutMode() {
       `;
     }).join("");
 
+
+function removeActiveWorkoutExercise(workoutExerciseId) {
+  if (!activeWorkout) {
+    return;
+  }
+
+  const exercise = activeWorkout.exercises.find(
+    item => item.workoutExerciseId === workoutExerciseId
+  );
+
+  if (!exercise) {
+    return;
+  }
+
+  const hasCompletedSets = exercise.sets.some(
+    set => set.completed
+  );
+
+  const warning = hasCompletedSets
+    ? "\n\nWARNING: This exercise has completed sets. Removing it will also remove those logged sets from this workout."
+    : "";
+
+  const confirmed = confirm(
+    "Remove " + exercise.name + " from this workout?" +
+    warning +
+    "\n\nYour original saved routine will not be changed."
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  activeWorkout.exercises = activeWorkout.exercises.filter(
+    item => item.workoutExerciseId !== workoutExerciseId
+  );
+
+  saveActiveWorkout();
+  renderWorkoutMode();
+  updateSaveStatus("Saved");
+}
+
     
 return `
   <article class="workout-exercise-card">
