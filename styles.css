@@ -2518,3 +2518,67 @@ body.theme-pink .rest-timer-display.finished,
 body.theme-pink #floatingRestTimerDisplay.finished {
   color: #15803d;
 }
+
+/* =====================================
+   GYMPILOT — LIGHT PLANNER POP-UP
+   ===================================== */
+
+/* Scott — Blue */
+
+body.theme-blue .planner-modal-card {
+  background: #eaf3fc;
+  color: #123e68;
+  border: 1px solid #8fb9e1;
+  box-shadow: 0 18px 50px rgba(0,0,0,0.25);
+}
+
+body.theme-blue .planner-routine-picker select {
+  background: #ffffff;
+  color: #123e68;
+  border: 1px solid #9bb8e1;
+}
+
+/* Laurie — Pink */
+
+body.theme-pink .planner-modal-card {
+  background: #fbeaf3;
+  color: #713354;
+  border: 1px solid #d99bbd;
+  box-shadow: 0 18px 50px rgba(0,0,0,0.25);
+}
+
+body.theme-pink .planner-routine-picker select {
+  background: #ffffff;
+  color: #713354;
+  border: 1px solid #d99bbd;
+}
+
+/* Make modal text match its theme */
+
+.planner-modal-card h3,
+.planner-modal-card p,
+.planner-modal-card label {
+  color: inherit;
+}
+
+/* Make secondary buttons clear and readable */
+
+.planner-modal-card .secondary-button,
+.planner-modal-card .planner-modal-close {
+  background: #ffffff;
+  color: #173d75;
+  border: 1px solid #9bb8e1;
+}
+
+body.theme-pink .planner-modal-card .secondary-button,
+body.theme-pink .planner-modal-card .planner-modal-close {
+  color: #713354;
+  border-color: #d99bbd;
+}
+
+/* Primary action button */
+
+.planner-modal-card .primary-button {
+  background: var(--accent);
+  color: var(--button-text);
+}
