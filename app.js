@@ -1346,6 +1346,7 @@ sets: Array.from({ length: setCount }, (_, index) => ({
   renderWorkoutMode();
 }
 
+
 function renderWorkoutMode() {
   const title = document.getElementById("activeWorkoutTitle");
   const summary = document.getElementById("activeWorkoutSummary");
@@ -1365,7 +1366,9 @@ function renderWorkoutMode() {
   }
 
   title.textContent = activeWorkout.routineName;
-  summary.textContent = `Training as ${profileLabel(activeWorkout.profile)} • Workout date: ${formatDate(activeWorkout.date)}`;
+  summary.textContent =
+    `Training as ${profileLabel(activeWorkout.profile)} • Workout date: ${formatDate(activeWorkout.date)}`;
+
   saveButton.classList.add("visible");
 
   list.innerHTML = activeWorkout.exercises.map((exercise) => {
@@ -1403,8 +1406,40 @@ function renderWorkoutMode() {
         </div>
       `;
     }).join("");
-  }
-  
+
+    return `
+      <article class="workout-exercise-card">
+
+        <div class="workout-exercise-heading">
+          <h4>${escapeHTML(exercise.name)}</h4>
+
+          <button
+            type="button"
+            class="secondary-button workout-remove-button"
+            onclick="removeActiveWorkoutExercise('${exercise.workoutExerciseId}')"
+          >
+            Remove exercise
+          </button>
+        </div>
+
+        <div class="routine-exercise-detail">
+          Planned: ${exercise.plannedSets || "?"} sets
+          ${exercise.plannedReps ? ` • ${escapeHTML(exercise.plannedReps)} reps` : ""}
+          ${exercise.plannedWeight || exercise.plannedUnit === "bodyweight"
+            ? ` • ${escapeHTML(formatLoadWithUnit(exercise.plannedWeight, exercise.plannedUnit))}`
+            : ""}
+        </div>
+
+        <div class="workout-set-list">
+          ${setRows}
+        </div>
+
+      </article>
+    `;
+  }).join("");
+}
+
+
 function removeActiveWorkoutExercise(workoutExerciseId) {
   if (!activeWorkout) {
     return;
@@ -1445,36 +1480,6 @@ function removeActiveWorkoutExercise(workoutExerciseId) {
   updateSaveStatus("Saved");
 }
 
-    
-return `
-  <article class="workout-exercise-card">
-
-    <div class="workout-exercise-heading">
-      <h4>${escapeHTML(exercise.name)}</h4>
-
-      <button
-        type="button"
-        class="secondary-button workout-remove-button"
-        onclick="removeActiveWorkoutExercise('${exercise.workoutExerciseId}')"
-      >
-        Remove exercise
-      </button>
-    </div>
-
-    <div class="routine-exercise-detail">
-
-          Planned: ${exercise.plannedSets || "?"} sets
-          ${exercise.plannedReps ? ` • ${escapeHTML(exercise.plannedReps)} reps` : ""}
-          ${exercise.plannedWeight || exercise.plannedUnit === "bodyweight" ? ` • ${escapeHTML(formatLoadWithUnit(exercise.plannedWeight, exercise.plannedUnit))}` : ""}
-        </div>
-
-        <div class="workout-set-list">
-          ${setRows}
-        </div>
-      </article>
-    `;
-  }).join("");
-}
 
 
 function updateWorkoutSet(workoutExerciseId, setId, field, value) {
