@@ -1303,6 +1303,27 @@ function setupWorkoutMode() {
       }
     });
 
+  const swapClose = document.getElementById(
+    "workoutSwapExerciseClose"
+  );
+
+  const swapCancel = document.getElementById(
+    "workoutSwapExerciseCancel"
+  );
+
+  const swapBackdrop = document.getElementById(
+    "workoutSwapExerciseBackdrop"
+  );
+
+  [swapClose, swapCancel, swapBackdrop].forEach(button => {
+    if (button) {
+      button.addEventListener(
+        "click",
+        closeWorkoutSwapExerciseModal
+      );
+    }
+  });
+
 }
 
 function setDefaultWorkoutDate() {
@@ -1537,6 +1558,71 @@ function renderWorkoutMode() {
 
     `;
   }).join("");
+}
+
+
+let workoutExerciseToSwapId = null;
+
+function openWorkoutSwapExerciseModal(workoutExerciseId) {
+  if (!activeWorkout) return;
+
+  const exercise = activeWorkout.exercises.find(
+    item => item.workoutExerciseId === workoutExerciseId
+  );
+
+  if (!exercise) return;
+
+  if (exercise.sets.some(set => set.completed)) {
+    alert("This exercise has completed sets. Add another exercise instead.");
+    return;
+  }
+
+  const modal = document.getElementById("workoutSwapExerciseModal");
+  const select = document.getElementById("workoutSwapExerciseSelect");
+
+  if (!modal || !select) return;
+
+  workoutExerciseToSwapId = workoutExerciseId;
+
+  document.getElementById("workoutSwapExerciseName").textContent =
+    "Replacing: " + exercise.name;
+
+  const libraryExercises = gymPilotData.exercises || [];
+
+  select.innerHTML = `
+    <option value="">Choose replacement exercise</option>
+    ${libraryExercises.map(item => `
+      <option value="${escapeHTML(item.id)}">
+        ${escapeHTML(item.name)}
+      </option>
+    `).join("")}
+  `;
+
+  select.disabled = libraryExercises.length === 0;
+
+  document.getElementById("workoutSwapSets").value =
+    exercise.sets.length;
+
+  document.getElementById("workoutSwapReps").value =
+    exercise.plannedReps ?? "";
+
+  document.getElementById("workoutSwapWeight").value =
+    exercise.plannedWeight ?? "";
+
+  document.getElementById("workoutSwapUnit").value =
+    exercise.plannedUnit || "kg";
+
+  modal.classList.remove("hidden");
+}
+
+function closeWorkoutSwapExerciseModal() {
+  const modal = document.getElementById("workoutSwapExerciseModal");
+
+  if (modal) {
+    modal.classList.add("hidden");
+  }
+
+  workoutExerciseToSwapId = null;
 }
 
 
