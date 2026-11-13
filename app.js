@@ -1336,6 +1336,40 @@ function setupWorkoutMode() {
     }
   });
 
+  // REST TIMER BUTTON CONTROLS
+
+  const restTimerStartPauseButton = document.getElementById(
+    "restTimerStartPause"
+  );
+
+  const restTimerResetButton = document.getElementById(
+    "restTimerReset"
+  );
+
+  if (restTimerStartPauseButton) {
+    restTimerStartPauseButton.addEventListener(
+      "click",
+      startPauseRestTimer
+    );
+  }
+
+  if (restTimerResetButton) {
+    restTimerResetButton.addEventListener(
+      "click",
+      resetRestTimer
+    );
+  }
+
+  document.querySelectorAll("[data-rest-seconds]").forEach(button => {
+    button.addEventListener("click", () => {
+      selectRestTimerDuration(
+        Number(button.dataset.restSeconds)
+      );
+    });
+  });
+
+  renderRestTimer();
+
 }
 
 function setDefaultWorkoutDate() {
@@ -1423,6 +1457,129 @@ sets: Array.from({ length: setCount }, (_, index) => ({
 
     saveActiveWorkout();
   renderWorkoutMode();
+}
+
+/* =====================================
+   GYMPILOT — REST TIMER ENGINE
+   ===================================== */
+
+let restTimerDuration = 90;
+let restTimerRemaining = 90;
+let restTimerEndTime = null;
+let restTimerInterval = null;
+let restTimerRunning = false;
+
+function formatRestTime(seconds) {
+  const safeSeconds = Math.max(0, Math.ceil(seconds));
+  const minutes = Math.floor(safeSeconds / 60);
+  const remainder = safeSeconds % 60;
+
+  return (
+    String(minutes).padStart(2, "0") +
+    ":" +
+    String(remainder).padStart(2, "0")
+  );
+}
+
+function renderRestTimer() {
+  const display = document.getElementById("restTimerDisplay");
+  const startButton = document.getElementById("restTimerStartPause");
+  const status = document.getElementById("restTimerStatus");
+
+  if (!display || !startButton || !status) return;
+
+  display.textContent = formatRestTime(restTimerRemaining);
+
+  display.classList.toggle(
+    "finished",
+    !restTimerRunning && restTimerRemaining === 0
+  );
+
+  startButton.textContent = restTimerRunning
+    ? "Pause"
+    : restTimerRemaining === 0
+      ? "Start again"
+      : restTimerRemaining < restTimerDuration
+        ? "Resume"
+        : "Start";
+
+  status.textContent = restTimerRunning
+    ? "Rest countdown running..."
+    : restTimerRemaining === 0
+      ? "Rest complete! Ready for your next set."
+      : restTimerRemaining < restTimerDuration
+        ? "Timer paused."
+        : "Ready when you are.";
+
+  document.querySelectorAll("[data-rest-seconds]").forEach(button => {
+    button.classList.toggle(
+      "active",
+      Number(button.dataset.restSeconds) === restTimerDuration
+    );
+  });
+}
+
+function tickRestTimer() {
+  if (!restTimerRunning || restTimerEndTime === null) return;
+
+  restTimerRemaining = Math.max(
+    0,
+    Math.ceil((restTimerEndTime - Date.now()) / 1000)
+  );
+
+  if (restTimerRemaining === 0) {
+    restTimerRunning = false;
+    restTimerEndTime = null;
+    clearInterval(restTimerInterval);
+    restTimerInterval = null;
+  }
+
+  renderRestTimer();
+}
+
+function startPauseRestTimer() {
+  if (restTimerRunning) {
+    tickRestTimer();
+
+    if (!restTimerRunning) return;
+
+    restTimerRunning = false;
+    restTimerEndTime = null;
+    clearInterval(restTimerInterval);
+    restTimerInterval = null;
+
+    renderRestTimer();
+    return;
+  }
+
+  if (restTimerRemaining === 0) {
+    restTimerRemaining = restTimerDuration;
+  }
+
+  restTimerEndTime = Date.now() + restTimerRemaining * 1000;
+  restTimerRunning = true;
+
+  clearInterval(restTimerInterval);
+  restTimerInterval = setInterval(tickRestTimer, 250);
+
+  renderRestTimer();
+}
+
+function resetRestTimer() {
+  clearInterval(restTimerInterval);
+  restTimerInterval = null;
+  restTimerRunning = false;
+  restTimerEndTime = null;
+  restTimerRemaining = restTimerDuration;
+
+  renderRestTimer();
+}
+
+function selectRestTimerDuration(seconds) {
+  if (![30, 60, 90, 120, 180].includes(seconds)) return;
+
+  restTimerDuration = seconds;
+  resetRestTimer();
 }
 
 
