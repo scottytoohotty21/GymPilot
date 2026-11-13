@@ -2082,12 +2082,14 @@
 
 /* Main exercise card */
 
+
 .workout-exercise-card {
-  background: #f3f7ff;
-  color: #172b4d;
-  border: 1px solid #bfd3f5;
-  box-shadow: 0 4px 14px rgba(30, 64, 120, 0.07);
+  background: #d5e7f8;
+  color: #123e68;
+  border: 1px solid #8fb9e1;
+  box-shadow: 0 4px 14px rgba(30, 64, 120, 0.10);
 }
+
 
 /* Exercise heading */
 
@@ -2103,11 +2105,13 @@
 
 /* Individual set rows */
 
+
 .workout-exercise-card .workout-set-row {
-  background: #ffffff;
-  color: #172b4d;
-  border: 1px solid #d4e1f5;
+  background: #eaf3fc;
+  color: #123e68;
+  border: 1px solid #a8c9e8;
 }
+
 
 /* Labels */
 
@@ -2232,4 +2236,65 @@
     padding: 8px 5px;
     font-size: 0.95rem;
   }
+}
+
+/* =====================================
+   GYMPILOT — MOBILE WORKOUT DATE FIX
+   ===================================== */
+
+#workoutDate {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+/* =====================================
+   GYMPILOT — EVENLY SPACED SET BUTTONS
+   ===================================== */
+
+.workout-set-actions {
+  display: flex;
+  width: 100%;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.workout-set-actions button {
+  flex: 1 1 0;
+  min-width: 0;
+  text-align: center;
+  justify-content: center;
+}
+
+/* =====================================
+   GYMPILOT — SIDE-BY-SIDE EXERCISE BUTTONS
+   ===================================== */
+
+.workout-exercise-actions {
+  display: flex;
+  width: 100%;
+  gap: 8px;
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+
+.workout-exercise-actions button {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 10px 6px;
+  font-size: 0.8rem;
+  text-align: center;
+  white-space: normal;
+  justify-content: center;
+}
+
+/* Keep exercise heading and buttons neatly stacked */
+
+.workout-exercise-heading {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
 }
