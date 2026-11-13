@@ -1750,14 +1750,14 @@ updateFloatingRestTimerVisibility();
             />
           </label>
 
-          <label>
-            KGs / Time
-            <input
-              type="text"
-              value="${escapeHTML(set.actualWeight)}"
-              oninput="updateWorkoutSet('${exercise.workoutExerciseId}', '${set.setId}', 'actualWeight', this.value)"
-            />
-          </label>
+          
+<label>
+  KG / Time
+  <input type="text"
+    value="${escapeHTML(set.actualWeight)}"
+    oninput="updateWorkoutSet('${exercise.workoutExerciseId}', '${set.setId}', 'actualWeight', this.value)" />
+</label>
+
         </div>
       `;
     }).join("");
