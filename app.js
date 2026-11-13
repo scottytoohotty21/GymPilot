@@ -1315,6 +1315,18 @@ function setupWorkoutMode() {
     "workoutSwapExerciseBackdrop"
   );
 
+  const swapSave = document.getElementById(
+    "workoutSwapExerciseSave"
+  );
+
+  if (swapSave) {
+    swapSave.addEventListener(
+      "click",
+      saveWorkoutExerciseSwap
+    );
+  }
+
+
   [swapClose, swapCancel, swapBackdrop].forEach(button => {
     if (button) {
       button.addEventListener(
@@ -1748,6 +1760,107 @@ function addExerciseToActiveWorkout() {
   saveActiveWorkout();
   renderWorkoutMode();
   closeWorkoutAddExerciseModal();
+  updateSaveStatus("Saved");
+}
+
+function saveWorkoutExerciseSwap() {
+  if (!activeWorkout || !workoutExerciseToSwapId) return;
+
+  const exerciseIndex = activeWorkout.exercises.findIndex(
+    item => item.workoutExerciseId === workoutExerciseToSwapId
+  );
+
+  if (exerciseIndex === -1) return;
+
+  const oldExercise = activeWorkout.exercises[exerciseIndex];
+
+  // Protect completed sets
+  if (oldExercise.sets.some(set => set.completed)) {
+    alert("This exercise has completed sets. Add another exercise instead.");
+    closeWorkoutSwapExerciseModal();
+    return;
+  }
+
+  const exerciseId = document.getElementById(
+    "workoutSwapExerciseSelect"
+  ).value;
+
+  const replacement = (gymPilotData.exercises || []).find(
+    item => item.id === exerciseId
+  );
+
+  if (!replacement) {
+    alert("Please choose a replacement exercise.");
+    return;
+  }
+
+  const setsValue = document.getElementById("workoutSwapSets").value;
+  const repsValue = document.getElementById("workoutSwapReps").value;
+  const weightValue = document.getElementById("workoutSwapWeight").value;
+  const unitValue = document.getElementById("workoutSwapUnit").value;
+
+  const plannedSets = Number(setsValue);
+
+  if (
+    setsValue.trim() === "" ||
+    !Number.isInteger(plannedSets) ||
+    plannedSets < 1 ||
+    plannedSets > 100
+  ) {
+    alert("Please enter a valid number of sets.");
+    return;
+  }
+
+  if (
+    repsValue !== "" &&
+    (!Number.isInteger(Number(repsValue)) ||
+      Number(repsValue) < 0)
+  ) {
+    alert("Please enter valid planned reps.");
+    return;
+  }
+
+  if (
+    weightValue !== "" &&
+    (!Number.isFinite(Number(weightValue)) ||
+      Number(weightValue) < 0)
+  ) {
+    alert("Please enter a valid planned load.");
+    return;
+  }
+
+  if (!["kg", "lb", "bodyweight"].includes(unitValue)) {
+    alert("Please choose a valid unit.");
+    return;
+  }
+
+  const newExercise = {
+    workoutExerciseId: crypto.randomUUID(),
+    exerciseId: replacement.id,
+    name: replacement.name,
+    type: replacement.type || "",
+    muscleGroup: replacement.muscleGroup || "",
+    plannedSets,
+    plannedReps: repsValue,
+    plannedWeight: weightValue,
+    plannedUnit: unitValue,
+
+    sets: Array.from({ length: plannedSets }, (_, index) => ({
+      setId: crypto.randomUUID(),
+      setNumber: index + 1,
+      completed: false,
+      actualReps: repsValue,
+      actualWeight: weightValue,
+      actualUnit: unitValue
+    }))
+  };
+
+  // Replace at the same position
+  activeWorkout.exercises[exerciseIndex] = newExercise;
+
+  saveActiveWorkout();
+  renderWorkoutMode();
+  closeWorkoutSwapExerciseModal();
   updateSaveStatus("Saved");
 }
 
