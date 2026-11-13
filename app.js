@@ -1432,6 +1432,7 @@ function renderWorkoutMode() {
   const list = document.getElementById("activeWorkoutList");
   const saveButton = document.getElementById("saveWorkoutButton");
   const addActions = document.getElementById("workoutAddActions");
+  const restTimer = document.getElementById("workoutRestTimer");
 
 
   if (!title || !summary || !list || !saveButton) {
@@ -1448,6 +1449,9 @@ function renderWorkoutMode() {
     if (addActions) {
       addActions.classList.add("hidden");
     }
+    if (restTimer) {
+  restTimer.classList.add("hidden");
+}
 
     return;
 
@@ -1461,6 +1465,9 @@ function renderWorkoutMode() {
   if (addActions) {
     addActions.classList.remove("hidden");
   }
+  if (restTimer) {
+  restTimer.classList.remove("hidden");
+}
 
 
   list.innerHTML = activeWorkout.exercises.map((exercise) => {
