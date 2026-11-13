@@ -1352,6 +1352,8 @@ function renderWorkoutMode() {
   const summary = document.getElementById("activeWorkoutSummary");
   const list = document.getElementById("activeWorkoutList");
   const saveButton = document.getElementById("saveWorkoutButton");
+  const addActions = document.getElementById("workoutAddActions");
+
 
   if (!title || !summary || !list || !saveButton) {
     return;
@@ -1361,8 +1363,15 @@ function renderWorkoutMode() {
     title.textContent = "No active workout";
     summary.textContent = "Choose a routine above to begin.";
     list.innerHTML = "";
+    
     saveButton.classList.remove("visible");
+
+    if (addActions) {
+      addActions.classList.add("hidden");
+    }
+
     return;
+
   }
 
   title.textContent = activeWorkout.routineName;
@@ -1370,6 +1379,10 @@ function renderWorkoutMode() {
     `Training as ${profileLabel(activeWorkout.profile)} • Workout date: ${formatDate(activeWorkout.date)}`;
 
   saveButton.classList.add("visible");
+  if (addActions) {
+    addActions.classList.remove("hidden");
+  }
+
 
   list.innerHTML = activeWorkout.exercises.map((exercise) => {
     const setRows = exercise.sets.map((set) => {
