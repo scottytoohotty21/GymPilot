@@ -2400,3 +2400,69 @@ body.theme-pink .workout-exercise-card .secondary-button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+/* =====================================
+   GYMPILOT — PINK THEME REST TIMERS
+   ===================================== */
+
+/* Main workout rest timer */
+
+body.theme-pink .workout-rest-timer {
+  background: #f5d9e9;
+  color: #713354;
+  border: 1px solid #d99bbd;
+  box-shadow: 0 4px 14px rgba(130, 50, 95, 0.10);
+}
+
+/* Main timer countdown */
+
+body.theme-pink .rest-timer-display {
+  color: #713354;
+}
+
+/* Main timer buttons */
+
+body.theme-pink .workout-rest-timer button {
+  background: #ffffff;
+  color: #713354;
+  border: 1px solid #d99bbd;
+}
+
+body.theme-pink .workout-rest-timer button:hover {
+  background: #fce7f3;
+}
+
+/* Floating rest timer */
+
+body.theme-pink .floating-rest-timer {
+  background: #f5d9e9;
+  color: #713354;
+  border: 1px solid #d99bbd;
+  box-shadow: 0 8px 28px rgba(130, 50, 95, 0.20);
+}
+
+/* Floating countdown */
+
+body.theme-pink #floatingRestTimerDisplay {
+  color: #713354;
+}
+
+/* Floating timer buttons */
+
+body.theme-pink .floating-rest-timer-controls button,
+body.theme-pink #floatingRestTimerReset {
+  background: #ffffff;
+  color: #713354;
+  border: 1px solid #d99bbd;
+}
+
+body.theme-pink .floating-rest-timer-controls button:hover {
+  background: #fce7f3;
+}
+
+/* Keep finished countdown green */
+
+body.theme-pink .rest-timer-display.finished,
+body.theme-pink #floatingRestTimerDisplay.finished {
+  color: #15803d;
+}
