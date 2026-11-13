@@ -1257,6 +1257,40 @@ function setupWorkoutMode() {
       saveCompletedWorkout();
     });
   }
+
+  const addExerciseButton = document.getElementById(
+    "addWorkoutExerciseButton"
+  );
+
+  const addExerciseClose = document.getElementById(
+    "workoutAddExerciseClose"
+  );
+
+  const addExerciseCancel = document.getElementById(
+    "workoutAddExerciseCancel"
+  );
+
+  const addExerciseBackdrop = document.getElementById(
+    "workoutAddExerciseBackdrop"
+  );
+
+  if (addExerciseButton) {
+    addExerciseButton.addEventListener(
+      "click",
+      openWorkoutAddExerciseModal
+    );
+  }
+
+  [addExerciseClose, addExerciseCancel, addExerciseBackdrop]
+    .forEach(button => {
+      if (button) {
+        button.addEventListener(
+          "click",
+          closeWorkoutAddExerciseModal
+        );
+      }
+    });
+
 }
 
 function setDefaultWorkoutDate() {
@@ -1450,6 +1484,48 @@ function renderWorkoutMode() {
       </article>
     `;
   }).join("");
+}
+
+
+function openWorkoutAddExerciseModal() {
+  if (!activeWorkout) {
+    return;
+  }
+
+  const modal = document.getElementById("workoutAddExerciseModal");
+  const select = document.getElementById("workoutAddExerciseSelect");
+
+  if (!modal || !select) {
+    return;
+  }
+
+  const exercises = gymPilotData.exercises || [];
+
+  select.innerHTML = `
+    <option value="">Choose exercise</option>
+    ${exercises.map(exercise => `
+      <option value="${escapeHTML(exercise.id)}">
+        ${escapeHTML(exercise.name)}
+      </option>
+    `).join("")}
+  `;
+
+  select.disabled = exercises.length === 0;
+
+  document.getElementById("workoutAddSets").value = 3;
+  document.getElementById("workoutAddReps").value = 10;
+  document.getElementById("workoutAddWeight").value = "";
+  document.getElementById("workoutAddUnit").value = "kg";
+
+  modal.classList.remove("hidden");
+}
+
+function closeWorkoutAddExerciseModal() {
+  const modal = document.getElementById("workoutAddExerciseModal");
+
+  if (modal) {
+    modal.classList.add("hidden");
+  }
 }
 
 
