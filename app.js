@@ -2532,11 +2532,21 @@ function renderPlanner() {
         return;
       }
 
-      const routineBadge = document.createElement("span");
-      routineBadge.className = "planner-routine-badge";
-      routineBadge.textContent = routine.name;
+      
+const routineBadge = document.createElement("span");
+routineBadge.className = "planner-routine-badge";
+routineBadge.textContent = routine.name;
 
-      cell.appendChild(routineBadge);
+// Accessible workout description for the calendar day
+cell.setAttribute(
+  "aria-label",
+  `${day} ${monthLabel.textContent}: ${
+    workoutsForDay.length
+  } planned workout${workoutsForDay.length === 1 ? "" : "s"}`
+);
+
+cell.appendChild(routineBadge);
+
     });
 
     cell.addEventListener("click", () => {
