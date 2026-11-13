@@ -1403,8 +1403,8 @@ function renderWorkoutMode() {
         </div>
       `;
     }).join("");
-
-
+  }
+  
 function removeActiveWorkoutExercise(workoutExerciseId) {
   if (!activeWorkout) {
     return;
@@ -1475,6 +1475,7 @@ return `
     `;
   }).join("");
 }
+
 
 function updateWorkoutSet(workoutExerciseId, setId, field, value) {
   if (!activeWorkout) {
