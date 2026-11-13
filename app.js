@@ -1404,10 +1404,24 @@ function renderWorkoutMode() {
       `;
     }).join("");
 
-    return `
-      <article class="workout-exercise-card">
-        <h4>${escapeHTML(exercise.name)}</h4>
-        <div class="routine-exercise-detail">
+    
+return `
+  <article class="workout-exercise-card">
+
+    <div class="workout-exercise-heading">
+      <h4>${escapeHTML(exercise.name)}</h4>
+
+      <button
+        type="button"
+        class="secondary-button workout-remove-button"
+        onclick="removeActiveWorkoutExercise('${exercise.workoutExerciseId}')"
+      >
+        Remove exercise
+      </button>
+    </div>
+
+    <div class="routine-exercise-detail">
+
           Planned: ${exercise.plannedSets || "?"} sets
           ${exercise.plannedReps ? ` • ${escapeHTML(exercise.plannedReps)} reps` : ""}
           ${exercise.plannedWeight || exercise.plannedUnit === "bodyweight" ? ` • ${escapeHTML(formatLoadWithUnit(exercise.plannedWeight, exercise.plannedUnit))}` : ""}
