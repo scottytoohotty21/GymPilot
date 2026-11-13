@@ -3137,19 +3137,48 @@ function buildWorkoutSummary(workoutId) {
       return;
     }
 
-    completedSets.forEach((set) => {
-      const setParts = [];
+    
+/* Group consecutive completed sets with matching results */
 
-      if (set.actualReps !== "") {
-        setParts.push(`${set.actualReps} reps`);
-      }
+const groupedSets = [];
 
-      if (set.actualWeight !== "" || set.actualUnit === "bodyweight") {
-  setParts.push(formatLoadWithUnit(set.actualWeight, set.actualUnit));
-}
+completedSets.forEach((set) => {
+  const setParts = [];
 
-      lines.push(`Set ${set.setNumber}: ${setParts.length ? setParts.join(" • ") : "Completed"}`);
+  if (set.actualReps !== "" && set.actualReps != null) {
+    setParts.push(`${set.actualReps} reps`);
+  }
+
+  if (
+    (set.actualWeight !== "" && set.actualWeight != null) ||
+    set.actualUnit === "bodyweight"
+  ) {
+    setParts.push(formatLoadWithUnit(set.actualWeight, set.actualUnit));
+  }
+
+  const description = setParts.length
+    ? setParts.join(" • ")
+    : "Completed";
+
+  const previousGroup = groupedSets[groupedSets.length - 1];
+
+  if (previousGroup && previousGroup.description === description) {
+    previousGroup.count += 1;
+  } else {
+    groupedSets.push({
+      description,
+      count: 1
     });
+  }
+});
+
+groupedSets.forEach((group) => {
+  if (group.count === 1) {
+    lines.push(`1 set × ${group.description}`);
+  } else {
+    lines.push(`${group.count} sets × ${group.description}`);
+  }
+});
 
     lines.push("");
   });
