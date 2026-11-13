@@ -1648,6 +1648,64 @@ function addExerciseToActiveWorkout() {
 }
 
 
+function addActiveWorkoutSet(workoutExerciseId) {
+  if (!activeWorkout) return;
+
+  const exercise = activeWorkout.exercises.find(
+    item => item.workoutExerciseId === workoutExerciseId
+  );
+
+  if (!exercise) return;
+
+  const lastSet = exercise.sets[exercise.sets.length - 1];
+
+  const newSet = {
+    setId: crypto.randomUUID(),
+    setNumber: exercise.sets.length + 1,
+    completed: false,
+    actualReps: lastSet ? lastSet.actualReps : (exercise.plannedReps || ""),
+    actualWeight: lastSet ? lastSet.actualWeight : (exercise.plannedWeight || ""),
+    actualUnit: lastSet ? lastSet.actualUnit : (exercise.plannedUnit || "kg")
+  };
+
+  exercise.sets.push(newSet);
+  exercise.plannedSets = exercise.sets.length;
+
+  saveActiveWorkout();
+  renderWorkoutMode();
+  updateSaveStatus("Saved");
+}
+
+
+function removeActiveWorkoutSet(workoutExerciseId) {
+  if (!activeWorkout) return;
+
+  const exercise = activeWorkout.exercises.find(
+    item => item.workoutExerciseId === workoutExerciseId
+  );
+
+  if (!exercise) return;
+
+  if (exercise.sets.length <= 1) {
+    alert("An exercise must have at least one set.");
+    return;
+  }
+
+  const lastSet = exercise.sets[exercise.sets.length - 1];
+
+  if (lastSet.completed) {
+    alert("The last set is completed and cannot be removed.");
+    return;
+  }
+
+  exercise.sets.pop();
+  exercise.plannedSets = exercise.sets.length;
+
+  saveActiveWorkout();
+  renderWorkoutMode();
+  updateSaveStatus("Saved");
+}
+
 function removeActiveWorkoutExercise(workoutExerciseId) {
   if (!activeWorkout) {
     return;
