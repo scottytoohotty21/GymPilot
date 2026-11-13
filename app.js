@@ -1368,7 +1368,44 @@ function setupWorkoutMode() {
     });
   });
 
+
+  // FLOATING REST TIMER BUTTONS
+
+  const floatingStartButton = document.getElementById(
+    "floatingRestTimerStartPause"
+  );
+
+  const floatingResetButton = document.getElementById(
+    "floatingRestTimerReset"
+  );
+
+  if (floatingStartButton) {
+    floatingStartButton.addEventListener(
+      "click",
+      startPauseRestTimer
+    );
+  }
+
+  if (floatingResetButton) {
+    floatingResetButton.addEventListener(
+      "click",
+      resetRestTimer
+    );
+  }
+
   renderRestTimer();
+
+  window.addEventListener(
+    "scroll",
+    updateFloatingRestTimerVisibility,
+    { passive: true }
+  );
+
+  window.addEventListener(
+    "resize",
+    updateFloatingRestTimerVisibility
+  );
+
 
 }
 
@@ -1490,6 +1527,35 @@ function renderRestTimer() {
 
   display.textContent = formatRestTime(restTimerRemaining);
 
+  // Keep the floating timer synchronised
+  const floatingDisplay = document.getElementById(
+    "floatingRestTimerDisplay"
+  );
+
+  const floatingStartButton = document.getElementById(
+    "floatingRestTimerStartPause"
+  );
+
+  if (floatingDisplay) {
+    floatingDisplay.textContent = formatRestTime(restTimerRemaining);
+
+    floatingDisplay.classList.toggle(
+      "finished",
+      !restTimerRunning && restTimerRemaining === 0
+    );
+  }
+
+  if (floatingStartButton) {
+    floatingStartButton.textContent = restTimerRunning
+      ? "Pause"
+      : restTimerRemaining === 0
+        ? "Start again"
+        : restTimerRemaining < restTimerDuration
+          ? "Resume"
+          : "Start";
+  }
+
+
   display.classList.toggle(
     "finished",
     !restTimerRunning && restTimerRemaining === 0
@@ -1590,6 +1656,31 @@ function selectRestTimerDuration(seconds) {
 }
 
 
+function updateFloatingRestTimerVisibility() {
+  const floatingTimer = document.getElementById(
+    "floatingRestTimer"
+  );
+
+  const mainTimer = document.getElementById(
+    "workoutRestTimer"
+  );
+
+  if (!floatingTimer || !mainTimer) return;
+
+  if (!activeWorkout || mainTimer.classList.contains("hidden")) {
+    floatingTimer.classList.add("hidden");
+    return;
+  }
+
+  const timerPosition = mainTimer.getBoundingClientRect();
+
+  // Show floating timer once main timer has scrolled above screen
+  const shouldFloat = timerPosition.bottom < 0;
+
+  floatingTimer.classList.toggle("hidden", !shouldFloat);
+}
+
+
 function renderWorkoutMode() {
   const title = document.getElementById("activeWorkoutTitle");
   const summary = document.getElementById("activeWorkoutSummary");
@@ -1616,7 +1707,7 @@ function renderWorkoutMode() {
     if (restTimer) {
   restTimer.classList.add("hidden");
 }
-
+updateFloatingRestTimerVisibility();
     return;
 
   }
@@ -1741,6 +1832,7 @@ function renderWorkoutMode() {
 
     `;
   }).join("");
+    updateFloatingRestTimerVisibility();
 }
 
 
