@@ -1469,17 +1469,35 @@ function renderWorkoutMode() {
     return `
       <article class="workout-exercise-card">
 
+       
         <div class="workout-exercise-heading">
           <h4>${escapeHTML(exercise.name)}</h4>
 
-          <button
-            type="button"
-            class="secondary-button workout-remove-button"
-            onclick="removeActiveWorkoutExercise('${exercise.workoutExerciseId}')"
-          >
-            Remove exercise
-          </button>
+          <div class="workout-exercise-actions">
+
+            <button
+              type="button"
+              class="secondary-button workout-swap-button"
+              onclick="openWorkoutSwapExerciseModal('${exercise.workoutExerciseId}')"
+              ${exercise.sets.some(set => set.completed) ? "disabled" : ""}
+              title="${exercise.sets.some(set => set.completed)
+                ? "Completed sets cannot be swapped. Add another exercise instead."
+                : "Swap this exercise"}"
+            >
+              Swap exercise
+            </button>
+
+            <button
+              type="button"
+              class="secondary-button workout-remove-button"
+              onclick="removeActiveWorkoutExercise('${exercise.workoutExerciseId}')"
+            >
+              Remove exercise
+            </button>
+
+          </div>
         </div>
+
 
         <div class="routine-exercise-detail">
           Planned: ${exercise.plannedSets || "?"} sets
