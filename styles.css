@@ -1918,3 +1918,94 @@
     min-width: 52px;
   }
 }
+
+/* =====================================
+   GYMPILOT — FLOATING REST TIMER
+   ===================================== */
+
+.floating-rest-timer {
+  position: fixed;
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+
+  width: calc(100% - 32px);
+  max-width: 440px;
+  padding: 12px 16px;
+
+  background: #f3f7ff;
+  color: #172b4d;
+  border: 1px solid #b8cef5;
+  border-radius: 16px;
+
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+}
+
+.floating-rest-timer.hidden {
+  display: none;
+}
+
+.floating-rest-timer-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.floating-rest-timer-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  opacity: 0.7;
+}
+
+#floatingRestTimerDisplay {
+  font-size: 1.8rem;
+  font-weight: 800;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.floating-rest-timer-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.floating-rest-timer-controls button {
+  min-width: 70px;
+  padding: 10px 12px;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+#floatingRestTimerDisplay.finished {
+  color: #15803d;
+}
+
+/* Smaller phones */
+
+@media (max-width: 480px) {
+  .floating-rest-timer {
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    width: calc(100% - 20px);
+    padding: 10px 12px;
+    gap: 10px;
+  }
+
+  #floatingRestTimerDisplay {
+    font-size: 1.55rem;
+  }
+
+  .floating-rest-timer-controls button {
+    min-width: 58px;
+    padding: 9px 10px;
+    font-size: 0.8rem;
+  }
+}
