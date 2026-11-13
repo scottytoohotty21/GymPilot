@@ -1094,7 +1094,14 @@
   color: #ffffff;
 }
 
+/* =====================================
+   GYMPILOT — COMPACT MOBILE PLANNER
+   ===================================== */
+
 @media (max-width: 700px) {
+
+  /* Planner heading */
+
   .planner-heading {
     align-items: stretch;
   }
@@ -1107,24 +1114,69 @@
     min-width: 0;
   }
 
-  .planner-weekdays {
-    gap: 4px;
-  }
+  /* Calendar grid */
 
+  .planner-weekdays,
   .planner-calendar-grid {
     gap: 4px;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
   }
+
+  /* Compact day squares */
 
   .planner-day {
-    min-height: 82px;
-    padding: 6px;
-    border-radius: 10px;
+    min-width: 0;
+    min-height: 0;
+    aspect-ratio: 1 / 1;
+    padding: 4px 2px;
+    border-radius: 9px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
   }
 
-  .planner-routine-badge {
-    font-size: 0.65rem;
-    padding: 5px;
+  /* Day number */
+
+  .planner-day-number {
+    font-size: 0.85rem;
+    font-weight: 800;
+    line-height: 1;
   }
+
+  /* Workout badges become small dots */
+
+  .planner-routine-badge {
+    display: block;
+    width: 7px;
+    height: 7px;
+    min-width: 7px;
+    min-height: 7px;
+    padding: 0;
+    border-radius: 50%;
+    background: var(--accent);
+
+    font-size: 0;
+    line-height: 0;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  /* Keep empty calendar cells invisible */
+
+  .planner-day-empty {
+    background: transparent;
+    border: 0;
+  }
+
+  /* Highlight today's date */
+
+  .planner-today {
+    border: 2px solid var(--accent);
+  }
+
 }
 /* ---------------------------
    Planner light calendar card
