@@ -2623,6 +2623,58 @@ if (startButton) {
   modal.classList.remove("hidden");
 }
 
+function startPlannedWorkout() {
+  if (!plannerSelectedDate) return;
+
+  const plannedWorkout = plannedWorkouts.find(
+    workout => workout.date === plannerSelectedDate
+  );
+
+  if (!plannedWorkout) {
+    alert("No workout is planned for this date.");
+    return;
+  }
+
+  // Never overwrite an existing workout
+  if (activeWorkout) {
+    alert("You already have a workout in progress. Finish or clear it before starting another.");
+    return;
+  }
+
+  // Check the saved routine still exists
+  const routine = (gymPilotData.routines || []).find(
+    item => item.id === plannedWorkout.routineId
+  );
+
+  if (!routine) {
+    alert("This saved routine could not be found.");
+    return;
+  }
+
+  // Prepare Workout Mode using the existing controls
+  populateWorkoutRoutineSelect();
+
+  const routineSelect = document.getElementById("workoutRoutineSelect");
+  const dateInput = document.getElementById("workoutDate");
+
+  if (!routineSelect || !dateInput) return;
+
+  routineSelect.value = plannedWorkout.routineId;
+  dateInput.value = plannedWorkout.date;
+
+  // Reuse the existing workout-starting function
+  startWorkout();
+
+  // Keep the link to the Planner entry
+  if (activeWorkout) {
+    activeWorkout.plannedWorkoutId = plannedWorkout.id;
+    saveActiveWorkout();
+  }
+
+  closePlannerModal();
+  showScreen("workout");
+}
+
 function closePlannerModal() {
   const modal = document.getElementById("plannerModal");
 
@@ -2708,6 +2760,7 @@ const historyPanel = document.getElementById("historyPanel");
   const previousButton = document.getElementById("plannerPreviousMonth");
   const nextButton = document.getElementById("plannerNextMonth");
   const saveButton = document.getElementById("plannerSaveButton");
+  const startButton = document.getElementById("plannerStartButton");
   const removeButton = document.getElementById("plannerRemoveButton");
   const cancelButton = document.getElementById("plannerCancelButton");
   const closeButton = document.getElementById("plannerModalClose");
@@ -2759,6 +2812,13 @@ const historyPanel = document.getElementById("historyPanel");
       savePlannerWorkout();
     });
   }
+
+if (startButton) {
+  startButton.addEventListener("click", () => {
+    startPlannedWorkout();
+  });
+}
+
 
   if (removeButton) {
     removeButton.addEventListener("click", () => {
