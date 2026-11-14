@@ -2435,6 +2435,7 @@ function saveCompletedWorkout() {
       renderDashboard();
     renderWorkoutMode();
 renderHistory();
+renderPlanner();
 renderPersonalBests();
 renderSettings();
 
@@ -2533,6 +2534,13 @@ function renderPlanner() {
       workout => workout.date === dateString
     );
 
+const completedPlannerIds = new Set(
+  (gymPilotData.completedWorkouts || [])
+    .map(workout => workout.plannedWorkoutId)
+    .filter(Boolean)
+);
+
+
     workoutsForDay.forEach(workout => {
       const routine = (gymPilotData.routines || []).find(
         routineItem => routineItem.id === workout.routineId
@@ -2543,19 +2551,34 @@ function renderPlanner() {
       }
 
       
+
 const routineBadge = document.createElement("span");
 routineBadge.className = "planner-routine-badge";
-routineBadge.textContent = routine.name;
+
+// Check whether this planned workout has been completed
+const isCompleted = completedPlannerIds.has(workout.id);
+
+if (isCompleted) {
+  routineBadge.classList.add("planner-routine-completed");
+  routineBadge.textContent = "✓";
+  routineBadge.title = `${routine.name} — Completed`;
+} else {
+  routineBadge.textContent = routine.name;
+  routineBadge.title = `${routine.name} — Planned`;
+}
 
 // Accessible workout description for the calendar day
 cell.setAttribute(
   "aria-label",
   `${day} ${monthLabel.textContent}: ${
     workoutsForDay.length
-  } planned workout${workoutsForDay.length === 1 ? "" : "s"}`
+  } planned workout${workoutsForDay.length === 1 ? "" : "s"}${
+    isCompleted ? " — Completed" : ""
+  }`
 );
 
 cell.appendChild(routineBadge);
+
 
     });
 
