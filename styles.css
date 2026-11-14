@@ -2582,3 +2582,37 @@ body.theme-pink .planner-modal-card .planner-modal-close {
   background: var(--accent);
   color: var(--button-text);
 }
+
+/* =====================================
+   GYMPILOT — HISTORY DATE MOBILE FIX
+   ===================================== */
+
+@media (max-width: 700px) {
+
+  /* Keep date controls inside their container */
+
+  .history-date-controls {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  /* Allow From and To labels to shrink */
+
+  .history-date-controls label {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Fix iPhone Safari date field overflow */
+
+  #statsStartDate,
+  #statsEndDate {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+}
