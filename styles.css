@@ -2616,3 +2616,28 @@ body.theme-pink .planner-modal-card .planner-modal-close {
   }
 
 }
+
+/* =====================================
+   GYMPILOT — COMPLETED PLANNER WORKOUT
+   ===================================== */
+
+.planner-routine-completed {
+  background: #16a34a;
+  color: #ffffff;
+  font-weight: 900;
+  text-align: center;
+}
+
+/* Mobile calendar completed indicator */
+@media (max-width: 700px) {
+  .planner-routine-completed {
+    width: 16px;
+    height: 16px;
+    min-width: 16px;
+    min-height: 16px;
+    border-radius: 50%;
+    font-size: 12px;
+    line-height: 16px;
+    padding: 0;
+  }
+}
