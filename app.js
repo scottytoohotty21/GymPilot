@@ -1445,6 +1445,16 @@ function populateWorkoutRoutineSelect() {
 }
 
 function startWorkout() {
+
+  // Protect an existing workout from being replaced
+  if (activeWorkout) {
+    alert(
+      "You already have a workout in progress. " +
+      "Please finish or clear it before starting another."
+    );
+    return;
+  }
+
   const routineId = document.getElementById("workoutRoutineSelect").value;
   const workoutDate = document.getElementById("workoutDate").value || new Date().toISOString().slice(0, 10);
 
