@@ -2832,22 +2832,56 @@ if (historyFilter && historyFilter.type === "range") {
 
   historyList.innerHTML = workouts.map((workout) => {
     const exerciseRows = workout.exercises.map((exercise) => {
-      const completedSetRows = exercise.sets
-        .filter((set) => set.completed)
-        .map((set) => {
-          const parts = [];
+      
+const completedSets = exercise.sets.filter(
+  (set) => set.completed
+);
 
-          if (set.actualReps !== "") {
-            parts.push(`${escapeHTML(set.actualReps)} reps`);
-          }
+const groupedSets = [];
 
-          if (set.actualWeight !== "" || set.actualUnit === "bodyweight") {
-  parts.push(`${escapeHTML(formatLoadWithUnit(set.actualWeight, set.actualUnit))}`);
-}
+completedSets.forEach((set) => {
+  const parts = [];
 
-          return `<div class="completed-set">Set ${set.setNumber}: ${parts.length ? parts.join(" • ") : "Completed"}</div>`;
-        })
-        .join("");
+  if (set.actualReps !== "" && set.actualReps != null) {
+    parts.push(`${set.actualReps} reps`);
+  }
+
+  if (
+    (set.actualWeight !== "" && set.actualWeight != null) ||
+    set.actualUnit === "bodyweight"
+  ) {
+    parts.push(
+      formatLoadWithUnit(set.actualWeight, set.actualUnit)
+    );
+  }
+
+  const description = parts.length
+    ? parts.join(" @ ")
+    : "Completed";
+
+  const previousGroup = groupedSets[groupedSets.length - 1];
+
+  if (
+    previousGroup &&
+    previousGroup.description === description
+  ) {
+    previousGroup.count += 1;
+  } else {
+    groupedSets.push({
+      description,
+      count: 1
+    });
+  }
+});
+
+const completedSetRows = groupedSets.map((group) => {
+  const text = group.description === "Completed"
+    ? `${group.count} ${group.count === 1 ? "set" : "sets"} completed`
+    : `${group.count} × ${group.description}`;
+
+  return `<div class="completed-set">${escapeHTML(text)}</div>`;
+}).join("");
+
 
       return `
         <div class="history-exercise-row">
