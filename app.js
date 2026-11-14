@@ -2613,6 +2613,12 @@ function openPlannerModal(dateString) {
     removeButton.classList.toggle("hidden", !existingWorkout);
   }
 
+const startButton = document.getElementById("plannerStartButton");
+
+if (startButton) {
+  startButton.classList.toggle("hidden", !existingWorkout);
+}
+
 
   modal.classList.remove("hidden");
 }
