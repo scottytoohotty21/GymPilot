@@ -1975,10 +1975,12 @@
    GYMPILOT — FLOATING REST TIMER
    ===================================== */
 
+
 .floating-rest-timer {
   position: fixed;
-  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  top: calc(12px + env(safe-area-inset-top, 0px));
   left: 50%;
+
   transform: translateX(-50%);
   z-index: 1000;
 
