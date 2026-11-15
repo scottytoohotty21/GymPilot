@@ -2641,3 +2641,18 @@ body.theme-pink .planner-modal-card .planner-modal-close {
     padding: 0;
   }
 }
+
+/* GYMPILOT — MULTIPLE COMPLETED WORKOUTS */
+
+@media (max-width: 700px) {
+  .planner-routine-completed {
+    width: auto;
+    min-width: 16px;
+    max-width: 100%;
+    padding: 0 3px;
+    box-sizing: border-box;
+    white-space: nowrap;
+    font-size: 11px;
+  }
+}
+
