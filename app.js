@@ -2553,7 +2553,7 @@ const hasUnfinishedPlan = workoutsForDay.some(
 
     
 // Show a blue dot when a planned workout is still unfinished
-if (hasUnfinishedPlan) {
+if (hasUnfinishedPlan && completedCount === 0) {
   const plannedBadge = document.createElement("span");
   plannedBadge.className = "planner-routine-badge";
   plannedBadge.textContent = "Planned";
