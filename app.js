@@ -2534,53 +2534,79 @@ function renderPlanner() {
       workout => workout.date === dateString
     );
 
-const completedPlannerIds = new Set(
-  (gymPilotData.completedWorkouts || [])
-    .map(workout => workout.plannedWorkoutId)
-    .filter(Boolean)
+
+const completedWorkoutsForDay = (
+  gymPilotData.completedWorkouts || []
+).filter(workout => workout.date === dateString);
+
+const completedCount = completedWorkoutsForDay.length;
+
+const hasUnfinishedPlan = workoutsForDay.some(
+  plannedWorkout =>
+    !completedWorkoutsForDay.some(
+      completedWorkout =>
+        completedWorkout.plannedWorkoutId === plannedWorkout.id
+    )
 );
 
 
-    workoutsForDay.forEach(workout => {
-      const routine = (gymPilotData.routines || []).find(
-        routineItem => routineItem.id === workout.routineId
-      );
 
-      if (!routine) {
-        return;
-      }
-
-      
-
-const routineBadge = document.createElement("span");
-routineBadge.className = "planner-routine-badge";
-
-// Check whether this planned workout has been completed
-const isCompleted = completedPlannerIds.has(workout.id);
-
-if (isCompleted) {
-  routineBadge.classList.add("planner-routine-completed");
-  routineBadge.textContent = "✓";
-  routineBadge.title = `${routine.name} — Completed`;
-} else {
-  routineBadge.textContent = routine.name;
-  routineBadge.title = `${routine.name} — Planned`;
+    
+// Show a blue dot when a planned workout is still unfinished
+if (hasUnfinishedPlan) {
+  const plannedBadge = document.createElement("span");
+  plannedBadge.className = "planner-routine-badge";
+  plannedBadge.textContent = "Planned";
+  plannedBadge.title = "Workout planned";
+  cell.appendChild(plannedBadge);
 }
 
-// Accessible workout description for the calendar day
+// Show completed workout indicators
+if (completedCount > 0) {
+  const completedBadge = document.createElement("span");
+
+  completedBadge.className =
+    "planner-routine-badge planner-routine-completed";
+
+  
+completedBadge.textContent =
+  completedCount === 1 ? "✓" : `✓${completedCount}`;
+
+
+  completedBadge.title =
+    `${completedCount} completed workout${
+      completedCount === 1 ? "" : "s"
+    }`;
+
+  cell.appendChild(completedBadge);
+}
+
+// Keep the calendar accessible
+const descriptions = [];
+
+if (workoutsForDay.length > 0) {
+  descriptions.push(
+    `${workoutsForDay.length} planned workout${
+      workoutsForDay.length === 1 ? "" : "s"
+    }`
+  );
+}
+
+if (completedCount > 0) {
+  descriptions.push(
+    `${completedCount} completed workout${
+      completedCount === 1 ? "" : "s"
+    }`
+  );
+}
+
 cell.setAttribute(
   "aria-label",
   `${day} ${monthLabel.textContent}: ${
-    workoutsForDay.length
-  } planned workout${workoutsForDay.length === 1 ? "" : "s"}${
-    isCompleted ? " — Completed" : ""
+    descriptions.join(", ") || "No workouts"
   }`
 );
 
-cell.appendChild(routineBadge);
-
-
-    });
 
     cell.addEventListener("click", () => {
       openPlannerModal(dateString);
